@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { Heart, Landmark, ExternalLink, FileText, Upload, X, CheckCircle2, Phone, Mail, Sparkles, Printer, ArrowLeft, Search } from "lucide-react";
+import { Heart, Landmark, ExternalLink, FileText, Upload, X, CheckCircle2, Phone, Mail, Sparkles, Printer, ArrowLeft, Search, BookOpen, Calendar, User, ChevronRight } from "lucide-react";
 import { DynamicLucideIcon } from "./ToolkitSection";
 import StatusCheckerModal from "./StatusCheckerModal";
 import { ref, push, set, get } from "firebase/database";
 import { db } from "../firebase";
+import { BlogPost } from "../utils/defaultData";
+import { formatBlogDate } from "../utils/date";
 
 interface ServiceItem {
   id: string;
@@ -111,9 +113,11 @@ interface ServicesSectionProps {
   lang: "en" | "np";
   logoUrl?: string;
   faviconUrl?: string;
+  blogs?: BlogPost[];
+  onOpenBlogModal?: (blog: BlogPost) => void;
 }
 
-export default function ServicesSection({ services, interests, lang, logoUrl, faviconUrl }: ServicesSectionProps) {
+export default function ServicesSection({ services, interests, lang, logoUrl, faviconUrl, blogs, onOpenBlogModal }: ServicesSectionProps) {
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -642,6 +646,90 @@ export default function ServicesSection({ services, interests, lang, logoUrl, fa
             );
           })()}
         </div>
+
+        {/* ================= FEATURED BLOG CARDS BELOW SERVICES ================= */}
+        {blogs && blogs.length > 0 && (
+          <div className="mb-24 pt-10 border-t border-white/5">
+            {/* Section Header */}
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-3">
+                <BookOpen className="h-4 w-4" />
+                <span className="text-xs font-mono font-bold tracking-wider uppercase">
+                  {lang === "en" ? "Editorial Journal & Blogs" : "सामग्री र ब्लगहरू"}
+                </span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white font-sans">
+                {lang === "en" ? "Articles & Publications" : "सम्पादकीय लेख र प्रकाशनहरू"}
+              </h2>
+              <p className="text-gray-400 mt-2 max-w-xl mx-auto text-xs">
+                {lang === "en" 
+                  ? "Explore perspectives, technical documentation, and localized web engineering journals."
+                  : "प्रविधि-शासन कागजातहरू र स्थानीयकृत वेब इन्जिनियरिङ जर्नलहरू अध्ययन गर्नुहोस्।"}
+              </p>
+            </div>
+
+            {/* Blog Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+              {blogs.map((blog) => {
+                const title = lang === "en" ? blog.titleEn : (blog.titleNp || blog.titleEn);
+                const content = lang === "en" ? blog.contentEn : (blog.contentNp || blog.contentEn);
+                const author = lang === "en" ? blog.authorEn : (blog.authorNp || blog.authorEn);
+                const rawDate = lang === "en" ? blog.dateEn : (blog.dateNp || blog.dateEn);
+                const formattedDate = formatBlogDate(rawDate, lang);
+
+                return (
+                  <div
+                    key={blog.id}
+                    onClick={() => onOpenBlogModal && onOpenBlogModal(blog)}
+                    className="group cursor-pointer rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-amber-500/40 transition-all duration-300 shadow-md hover:shadow-2xl overflow-hidden flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Photo Thumbnail */}
+                      <div className="relative h-48 w-full overflow-hidden bg-black/40">
+                        <img
+                          src={blog.mainPhoto || "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80"}
+                          alt={title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                        <div className="absolute top-3 left-3 bg-amber-500/90 text-black text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md backdrop-blur-sm">
+                          {lang === "en" ? "Article" : "लेख"}
+                        </div>
+                        <div className="absolute bottom-3 left-3 flex items-center gap-1 text-[11px] text-amber-200/90 font-mono">
+                          <Calendar className="h-3.5 w-3.5 text-amber-400" />
+                          <span>{formattedDate}</span>
+                        </div>
+                      </div>
+
+                      {/* Body Info */}
+                      <div className="p-5 space-y-2">
+                        <h3 className="text-base font-bold text-white group-hover:text-amber-400 transition-colors line-clamp-2 leading-snug">
+                          {title}
+                        </h3>
+                        <p className="text-xs text-gray-400 line-clamp-3 leading-relaxed">
+                          {content.replace(/[#*`_]/g, '')}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Footer Row */}
+                    <div className="px-5 pb-5 pt-3 border-t border-white/5 flex items-center justify-between text-xs font-mono text-gray-400">
+                      <div className="flex items-center space-x-1">
+                        <User className="h-3.5 w-3.5 text-amber-400" />
+                        <span className="truncate max-w-[120px]">{author}</span>
+                      </div>
+                      <span className="inline-flex items-center space-x-1 text-amber-400 font-bold group-hover:translate-x-1 transition-transform">
+                        <span>{lang === "en" ? "Read Post" : "पढ्नुहोस्"}</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ================= PASSIONS / INTERESTS PORTAL ================= */}
         <div>

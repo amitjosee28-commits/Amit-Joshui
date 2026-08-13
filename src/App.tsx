@@ -832,6 +832,11 @@ export default function App() {
           lang={lang}
           logoUrl={portfolioData.header?.logoUrl}
           faviconUrl={portfolioData.header?.faviconUrl}
+          blogs={portfolioData.blogs?.list || []}
+          onOpenBlogModal={(blog) => {
+            setSelectedBlog(blog);
+            setIsBlogModalOpen(true);
+          }}
         />
       </div>
 

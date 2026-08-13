@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Calendar, Clock, User, Share2, Facebook, Check, Image as ImageIcon } from "lucide-react";
 import { BlogPost } from "../utils/defaultData";
+import { formatBlogDate } from "../utils/date";
 
 interface BlogReaderModalProps {
   isOpen: boolean;
@@ -18,7 +19,8 @@ export default function BlogReaderModal({ isOpen, blog, lang, onClose }: BlogRea
   const title = lang === "en" ? blog.titleEn : (blog.titleNp || blog.titleEn);
   const content = lang === "en" ? blog.contentEn : (blog.contentNp || blog.contentEn);
   const author = lang === "en" ? blog.authorEn : (blog.authorNp || blog.authorEn);
-  const date = lang === "en" ? blog.dateEn : (blog.dateNp || blog.dateEn);
+  const rawDate = lang === "en" ? blog.dateEn : (blog.dateNp || blog.dateEn);
+  const date = formatBlogDate(rawDate, lang);
   const time = lang === "en" ? blog.timeEn : (blog.timeNp || blog.timeEn);
 
   // Generate shareable URL for Facebook

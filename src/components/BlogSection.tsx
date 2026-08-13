@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { BookOpen, Calendar, Clock, User, Share2, Eye, X, ChevronRight, MessageCircle } from "lucide-react";
 import { BlogPost } from "../utils/defaultData";
+import { formatBlogDate } from "../utils/date";
 
 interface BlogSectionProps {
+
   lang: "en" | "np";
   blogs: BlogPost[];
   onOpenBlogModal: (blog: BlogPost) => void;
@@ -43,7 +45,8 @@ export default function BlogSection({ lang, blogs, onOpenBlogModal }: BlogSectio
             const title = lang === "en" ? blog.titleEn : (blog.titleNp || blog.titleEn);
             const content = lang === "en" ? blog.contentEn : (blog.contentNp || blog.contentEn);
             const author = lang === "en" ? blog.authorEn : (blog.authorNp || blog.authorEn);
-            const date = lang === "en" ? blog.dateEn : (blog.dateNp || blog.dateEn);
+            const rawDate = lang === "en" ? blog.dateEn : (blog.dateNp || blog.dateEn);
+            const date = formatBlogDate(rawDate, lang);
             const time = lang === "en" ? blog.timeEn : (blog.timeNp || blog.timeEn);
 
             return (

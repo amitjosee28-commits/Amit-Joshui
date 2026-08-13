@@ -173,3 +173,56 @@ export function getNepalBSAndGregorian() {
     timeSemicolon: `${strHours};${strMinutes};${strSeconds}`
   };
 }
+
+export function formatBlogDate(dateStr: string, lang: 'en' | 'np'): string {
+  if (!dateStr) return lang === 'en' ? 'Oct 24, 2024' : 'अक्टोबर २४, २०२४';
+
+  const cleanStr = dateStr.trim();
+
+  if (cleanStr.toLowerCase().includes('coming soon') || cleanStr.includes('छिट्टै')) {
+    return lang === 'en' ? 'Oct 24, 2024' : 'अक्टोबर २४, २०२४';
+  }
+
+  // Attempt Date parsing
+  const parsed = new Date(cleanStr);
+  if (!isNaN(parsed.getTime())) {
+    if (lang === 'en') {
+      return parsed.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } else {
+      const nepaliMonths = [
+        'जनवरी', 'फेब्रुअरी', 'मार्च', 'अप्रिल', 'मे', 'जुन',
+        'जुलाई', 'अगस्ट', 'सेप्टेम्बर', 'अक्टोबर', 'नोभेम्बर', 'डिसेम्बर'
+      ];
+      const monthStr = nepaliMonths[parsed.getMonth()];
+      const dayStr = toNepaliDigits(parsed.getDate());
+      const yearStr = toNepaliDigits(parsed.getFullYear());
+      return `${monthStr} ${dayStr}, ${yearStr}`;
+    }
+  }
+
+  // Fallback for custom string
+  if (lang === 'np') {
+    let result = toNepaliDigits(cleanStr);
+    const monthMap: Record<string, string> = {
+      'Jan': 'जनवरी', 'Feb': 'फेब्रुअरी', 'Mar': 'मार्च', 'Apr': 'अप्रिल',
+      'May': 'मे', 'Jun': 'जुन', 'Jul': 'जुलाई', 'Aug': 'अगस्ट',
+      'Sep': 'सेप्टेम्बर', 'Oct': 'अक्टोबर', 'Nov': 'नोभेम्बर', 'Dec': 'डिसेम्बर',
+      'January': 'जनवरी', 'February': 'फेब्रुअरी', 'March': 'मार्च', 'April': 'अप्रिल',
+      'June': 'जुन', 'July': 'जुलाई', 'August': 'अगस्ट',
+      'September': 'सेप्टेम्बर', 'October': 'अक्टोबर', 'November': 'नोभेम्बर', 'December': 'डिसेम्बर'
+    };
+    Object.keys(monthMap).forEach(m => {
+      if (result.includes(m)) {
+        result = result.replace(new RegExp(m, 'g'), monthMap[m]);
+      }
+    });
+    return result;
+  }
+
+  return cleanStr;
+}
+
