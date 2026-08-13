@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+                            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- Main Homepage / Executive Biography Portal -->
+  <url>
+    <loc>https://amitjoshi.info.np/</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://amitjoshi.info.np/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="ne" href="https://amitjoshi.info.np/?lang=np"/>
+  </url>
+
+  <!-- Social Media Network Hub -->
+  <url>
+    <loc>https://amitjoshi.info.np/#social-section</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Community & Technical Initiatives -->
+  <url>
+    <loc>https://amitjoshi.info.np/#initiatives-section</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Useful Online Tools & Converters -->
+  <url>
+    <loc>https://amitjoshi.info.np/#tools-section</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Educational Degrees & Credentials -->
+  <url>
+    <loc>https://amitjoshi.info.np/#education-section</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Interactive Blog Space & Articles -->
+  <url>
+    <loc>https://amitjoshi.info.np/#blogs-section</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Professional Services & Consulting -->
+  <url>
+    <loc>https://amitjoshi.info.np/#services-section</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <!-- Contact & Geographical Locations -->
+  <url>
+    <loc>https://amitjoshi.info.np/#contact-section</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Official Subdomain Blog Portal -->
+  <url>
+    <loc>https://blog.amitjoshi.info.np/</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- HTML Visual Sitemap -->
+  <url>
+    <loc>https://amitjoshi.info.np/sitemap.html</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+</urlset>

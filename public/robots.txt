@@ -1,0 +1,22 @@
+# User-agent directives for Googlebot, Bingbot, and Web Crawlers
+User-agent: *
+Allow: /
+Allow: /#home-section
+Allow: /#social-section
+Allow: /#initiatives-section
+Allow: /#tools-section
+Allow: /#education-section
+Allow: /#blogs-section
+Allow: /#services-section
+Allow: /#contact-section
+Allow: /sitemap.xml
+Allow: /sitemap-index.xml
+Allow: /sitemap.html
+
+# Prevent indexing of administrative CMS dashboards
+Disallow: /dashboard.html
+Disallow: /adminloginweb11/
+
+# Sitemap Locations for Google Search Console
+Sitemap: https://amitjoshi.info.np/sitemap.xml
+Sitemap: https://amitjoshi.info.np/sitemap-index.xml

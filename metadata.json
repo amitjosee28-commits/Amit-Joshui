@@ -1,0 +1,6 @@
+{
+  "name": "Amit Joshi Portfolio & CMS",
+  "description": "An advanced personal portfolio for Amit Joshi with a hidden secret CMS dashboard integrated with Firebase Realtime Database and Authentication.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

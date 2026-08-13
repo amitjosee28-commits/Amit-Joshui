@@ -1,0 +1,200 @@
+{
+  "entities": {
+    "PortfolioHeader": {
+      "title": "Portfolio Header",
+      "description": "Branding configuration for the portal header and favicon",
+      "type": "object",
+      "properties": {
+        "logoUrl": {
+          "type": "string",
+          "description": "URL of the logo image"
+        },
+        "faviconUrl": {
+          "type": "string",
+          "description": "URL of the favicon icon"
+        },
+        "brandTextEn": {
+          "type": "string",
+          "description": "English brand text / name"
+        },
+        "brandTextNp": {
+          "type": "string",
+          "description": "Nepali brand text / name"
+        }
+      },
+      "required": ["brandTextEn"]
+    },
+    "HomepageSlide": {
+      "title": "Homepage Slide",
+      "description": "A single banner slide in the Ken Burns cinematic slideshow",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique slide ID"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Banner background image URL"
+        },
+        "titleEn": {
+          "type": "string",
+          "description": "English slider title"
+        },
+        "titleNp": {
+          "type": "string",
+          "description": "Nepali slider title"
+        },
+        "subtitleEn": {
+          "type": "string",
+          "description": "English subtitle"
+        },
+        "subtitleNp": {
+          "type": "string",
+          "description": "Nepali subtitle"
+        }
+      },
+      "required": ["id", "imageUrl"]
+    },
+    "SocialProfile": {
+      "title": "Social Profile",
+      "description": "A social network node with analytics tracking capabilities",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier"
+        },
+        "platform": {
+          "type": "string",
+          "description": "Platform name (e.g. Facebook, Instagram, WhatsApp)"
+        },
+        "url": {
+          "type": "string",
+          "description": "Direct external profile URL"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Lucide icon name to render"
+        },
+        "clickCount": {
+          "type": "integer",
+          "description": "Dynamic visit count tracking"
+        },
+        "titleEn": {
+          "type": "string",
+          "description": "English tool tip details"
+        },
+        "titleNp": {
+          "type": "string",
+          "description": "Nepali tool tip details"
+        }
+      },
+      "required": ["id", "platform", "url"]
+    },
+    "InitiativeItem": {
+      "title": "Initiative Item",
+      "description": "A local open-source or mentorship initiative card",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier"
+        },
+        "titleEn": {
+          "type": "string",
+          "description": "English title of initiative"
+        },
+        "titleNp": {
+          "type": "string",
+          "description": "Nepali title of initiative"
+        },
+        "textEn": {
+          "type": "string",
+          "description": "English brief excerpt"
+        },
+        "textNp": {
+          "type": "string",
+          "description": "Nepali brief excerpt"
+        },
+        "readMoreEn": {
+          "type": "string",
+          "description": "English full biography and metrics detail"
+        },
+        "readMoreNp": {
+          "type": "string",
+          "description": "Nepali full biography and metrics detail"
+        },
+        "fbIframe": {
+          "type": "string",
+          "description": "Embed code for social feed integrations"
+        }
+      },
+      "required": ["id", "titleEn"]
+    },
+    "ServiceItem": {
+      "title": "Service Item",
+      "description": "Professional consultancy services rendered",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier"
+        },
+        "titleEn": {
+          "type": "string",
+          "description": "English service title"
+        },
+        "titleNp": {
+          "type": "string",
+          "description": "Nepali service title"
+        },
+        "descriptionEn": {
+          "type": "string",
+          "description": "English full specification"
+        },
+        "descriptionNp": {
+          "type": "string",
+          "description": "Nepali full specification"
+        },
+        "priceEn": {
+          "type": "string",
+          "description": "Price tag description in English"
+        },
+        "priceNp": {
+          "type": "string",
+          "description": "Price tag description in Nepali"
+        },
+        "whatsappMessageEn": {
+          "type": "string",
+          "description": "Pre-filled chat text for WhatsApp booking in English"
+        },
+        "whatsappMessageNp": {
+          "type": "string",
+          "description": "Pre-filled chat text for WhatsApp booking in Nepali"
+        },
+        "officialLink": {
+          "type": "string",
+          "description": "Direct pricing information URL"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Lucide icon indicator"
+        }
+      },
+      "required": ["id", "titleEn"]
+    },
+    "SiteStats": {
+      "title": "Site Stats",
+      "description": "Tracking analytics metrics for the portal",
+      "type": "object",
+      "properties": {
+        "visits": {
+          "type": "integer",
+          "description": "Accumulative session load times"
+        }
+      },
+      "required": ["visits"]
+    }
+  }
+}

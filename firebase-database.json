@@ -1,0 +1,440 @@
+{
+  "portfolio": {
+    "header": {
+      "logoUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      "faviconUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      "brandTextEn": "Amit Joshi",
+      "brandTextNp": "अमित जोशी"
+    },
+    "homepage": {
+      "slides": [
+        {
+          "id": "slide-1",
+          "imageUrl": "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=1200&auto=format&fit=crop&q=80",
+          "titleEn": "Architect of Modern Web Experiences",
+          "titleNp": "आधुनिक वेब अनुभवका निर्माता",
+          "subtitleEn": "Engineering robust, scalable applications with clean, interactive designs.",
+          "subtitleNp": "स्वच्छ, अन्तरक्रियात्मक डिजाइनहरूको साथ बलियो, मापनयोग्य अनुप्रयोगहरू निर्माण गर्दै।"
+        },
+        {
+          "id": "slide-2",
+          "imageUrl": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80",
+          "titleEn": "Empowering Local Communities in Nepal",
+          "titleNp": "नेपालका स्थानीय समुदायहरूलाई सशक्त बनाउँदै",
+          "subtitleEn": "Developing open-source digital utilities and training next-gen engineers.",
+          "subtitleNp": "खुला स्रोत डिजिटल उपकरणहरू विकास गर्दै र अर्को पुस्ताका इन्जिनियरहरूलाई तालिम दिँदै।"
+        },
+        {
+          "id": "slide-3",
+          "imageUrl": "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1200&auto=format&fit=crop&q=80",
+          "titleEn": "Bridging Ideas with Technology",
+          "titleNp": "प्रविधिसँग विचारहरू जोड्दै",
+          "subtitleEn": "Consulting on enterprise software pipelines, database design, and global CMS deployments.",
+          "subtitleNp": "इन्टरप्राइज सफ्टवेयर पाइपलाइन, डेटाबेस डिजाइन, र विश्वव्यापी CMS डिप्लोइमेन्टमा परामर्श।"
+        }
+      ],
+      "biographySummaryEn": "Amit Joshi is a senior full-stack developer, software trainer, and visual craft specialist based in Kathmandu, Nepal. Operating at the intersections of high-performance backend pipelines and elegant, responsive frontends, Amit provides advanced custom CMS setups and community-focused digital toolkit initiatives.",
+      "biographySummaryNp": "अमित जोशी काठमाडौं, नेपालमा आधारित एक वरिष्ठ फुल-स्ट्याक डेभलपर, सफ्टवेयर प्रशिक्षक, र भिजुअल क्राफ्ट विशेषज्ञ हुनुहुन्छ। उच्च-प्रदर्शन ब्याकइन्ड पाइपलाइनहरू र सुरुचिपूर्ण, उत्तरदायी फ्रन्टइन्डहरूको संगममा काम गर्दै, अमितले उन्नत अनुकूलन CMS सेटअपहरू र समुदाय-केन्द्रित डिजिटल टुलकिट पहलहरू प्रदान गर्नुहुन्छ।",
+      "biographyFullEn": "With over 8 years of professional software engineering experience, Amit Joshi specializes in architectural design for enterprise portals, reactive web components, and real-time synchronization ecosystems. After graduating in Computer Engineering, Amit dedicated his efforts towards building utility tools that solve everyday digital workflow challenges for people in Nepal, while simultaneously scaling custom applications for international brands. His philosophy centers around lightweight code execution, modern responsive styles with custom neon glows, and localized dual-lingual translations.",
+      "biographyFullNp": "८ वर्षभन्दा बढी व्यावसायिक सफ्टवेयर इञ्जिनियरिङ अनुभवका साथ, अमित जोशी इन्टरप्राइज पोर्टलहरू, रिएक्टिभ वेब कम्पोनेन्टहरू, र रियल-टाइम सिङ्क्रोनाइजेसन इकोसिस्टमहरूको वास्तुकला डिजाइनमा विशेषज्ञ हुनुहुन्छ। कम्प्युटर इन्जिनियरिङमा स्नातक गरेपछि, अमितले नेपालका मानिसहरूका लागि दैनिक डिजिटल कार्यप्रवाहका चुनौतीहरू समाधान गर्ने उपयोगी उपकरणहरू निर्माण गर्न आफ्नो प्रयास समर्पित गर्नुभयो, र सँगसँगै अन्तर्राष्ट्रिय ब्रान्डहरूका लागि अनुकूलन अनुप्रयोगहरू विस्तार गर्नुभयो। उहाँको दर्शन हल्का कोड कार्यान्वयन, अनुकूलन नियोन चमकहरूको साथ आधुनिक उत्तरदायी शैलीहरू, र स्थानीयकृत द्वि-भाषी अनुवादहरूमा केन्द्रित छ।"
+    },
+    "socials": [
+      {
+        "id": "soc-1",
+        "platform": "Facebook",
+        "url": "https://facebook.com",
+        "icon": "Facebook",
+        "clickCount": 142,
+        "titleEn": "Amit Joshi on Facebook",
+        "titleNp": "फेसबुकमा अमित जोशी"
+      },
+      {
+        "id": "soc-2",
+        "platform": "Instagram",
+        "url": "https://instagram.com",
+        "icon": "Instagram",
+        "clickCount": 98,
+        "titleEn": "Visual updates and creative design logs",
+        "titleNp": "दृश्य अपडेट र रचनात्मक डिजाइन लगहरू"
+      },
+      {
+        "id": "soc-3",
+        "platform": "TikTok",
+        "url": "https://tiktok.com",
+        "icon": "Music",
+        "clickCount": 74,
+        "titleEn": "Coding tutorials and tech tips in Nepali",
+        "titleNp": "नेपालीमा कोडिङ ट्युटोरियल र प्राविधिक सुझावहरू"
+      },
+      {
+        "id": "soc-4",
+        "platform": "WhatsApp",
+        "url": "https://wa.me/9779800000000",
+        "icon": "MessageSquare",
+        "clickCount": 215,
+        "titleEn": "Instant direct chat & service queries",
+        "titleNp": "तुरुन्तै सीधा च्याट र सेवा सोधपुछ"
+      },
+      {
+        "id": "soc-5",
+        "platform": "Email",
+        "url": "mailto:amit@amitjoshi.info.np",
+        "icon": "Mail",
+        "clickCount": 63,
+        "titleEn": "Official inbox for business inquiries",
+        "titleNp": "व्यापार सोधपुछको लागि आधिकारिक इनबक्स"
+      }
+    ],
+    "initiatives": [
+      {
+        "id": "init-1",
+        "titleEn": "Digital Nepal Localizer Initiative",
+        "titleNp": "डिजिटल नेपाल स्थानीयकरण पहल",
+        "textEn": "An open-source effort compiling translations, calendar conversions, and local data utilities for developers building apps targeted at rural Nepal.",
+        "textNp": "ग्रामीण नेपाललाई लक्षित गरी एपहरू बनाउने विकासकर्ताहरूका लागि अनुवाद, पात्रो रूपान्तरण, र स्थानीय डाटा उपयोगिताहरू संकलन गर्ने खुला स्रोत प्रयास।",
+        "readMoreEn": "This initiative provides plug-and-play APIs for converting dates from BS to Gregorian and back, generating Nepali rupee formatting, and standardized administrative division selections. Over 150 local engineers use this utility toolkit weekly to deliver fully localized experiences in far-west Nepal.",
+        "readMoreNp": "यस पहलले बि.सं. बाट ग्रेगोरियन र पछाडि मितिहरू रूपान्तरण गर्न, नेपाली रुपैयाँ ढाँचा सिर्जना गर्न, र मानकीकृत प्रशासनिक विभाजन चयनहरू प्रदान गर्न प्लग-एन्ड-प्ले API हरू प्रदान गर्दछ। सुदूरपश्चिम नेपालमा पूर्ण रूपमा स्थानीयकृत अनुभवहरू प्रदान गर्न १५० भन्दा बढी स्थानीय इन्जिनियरहरूले यस टुलकिटको प्रयोग गर्छन्।",
+        "fbIframe": "<iframe src=\"https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Ffacebook&tabs=timeline&width=340&height=350&small_header=true&adapt_container_width=true&hide_cover=true&show_facepile=false&appId\" width=\"100%\" height=\"350\" style=\"border:none;overflow:hidden\" scrolling=\"no\" frameborder=\"0\" allowfullscreen=\"true\" allow=\"autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share\"></iframe>"
+      },
+      {
+        "id": "init-2",
+        "titleEn": "IT Career Accelerator Hub",
+        "titleNp": "आईटी करियर एक्सेलरेटर हब",
+        "textEn": "Providing free high-fidelity programming webinars, portfolio mentorship programs, and cloud engineering modules to young Nepali IT graduates.",
+        "textNp": "युवा नेपाली आईटी स्नातकहरूलाई निःशुल्क उच्च-गुणस्तर प्रोग्रामिङ वेबिनार, पोर्टफोलियो मेन्टरशिप कार्यक्रमहरू, र क्लाउड इन्जिनियरिङ मोड्युलहरू प्रदान गर्दै।",
+        "readMoreEn": "Our mission is to bridge the massive gap between academic curricula and actual engineering requirements in modern enterprise contexts. Amit hosts bi-weekly direct code-reviews and live deployments on Cloud platforms to show real production environments under load.",
+        "readMoreNp": "हाम्रो मिशन शैक्षिक पाठ्यक्रम र आधुनिक उद्यम सन्दर्भहरूमा वास्तविक इन्जिनियरिङ आवश्यकताहरू बीचको ठूलो अन्तरलाई कम गर्नु हो। अमितले लोड अन्तर्गत वास्तविक उत्पादन वातावरण देखाउन क्लाउड प्लेटफर्महरूमा दुई-साप्ताहिक प्रत्यक्ष कोड-समीक्षा र प्रत्यक्ष परिनियोजनहरू होस्ट गर्नुहुन्छ।",
+        "fbIframe": "<iframe src=\"https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Ffacebook&tabs=timeline&width=340&height=350&small_header=true&adapt_container_width=true&hide_cover=true&show_facepile=false&appId\" width=\"100%\" height=\"350\" style=\"border:none;overflow:hidden\" scrolling=\"no\" frameborder=\"0\" allowfullscreen=\"true\" allow=\"autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share\"></iframe>"
+      }
+    ],
+    "blogs": {
+      "iframeUrl": "https://blog.amitjoshi.info.np",
+      "active": true
+    },
+    "education": [
+      {
+        "id": "edu-1",
+        "institutionEn": "Tribhuvan University, IOE",
+        "institutionNp": "त्रिभुवन विश्वविद्यालय, आईओई",
+        "degreeEn": "Bachelor in Computer Engineering",
+        "degreeNp": "कम्प्युटर इन्जिनियरिङमा स्नातक",
+        "yearsEn": "2014 - 2018",
+        "yearsNp": "२०७१ - २०७५",
+        "descriptionEn: "Focused on database architecture, distributed systems, and real-time operating parameters.",
+        "descriptionNp": "डेटाबेस आर्किटेक्चर, डिस्ट्रिब्युटेड प्रणालीहरू, र रियल-टाइम सञ्चालन प्यारामिटरहरूमा केन्द्रित।",
+        "detailsEn": "Graduated with honors. Completed key research on multi-tenant localized CMS systems for regional government portals in Nepal, optimizing low-bandwidth page deliveries.",
+        "detailsNp": "सम्मानका साथ स्नातक। कम ब्यान्डविथमा वेबपेज लोडलाई अनुकूलन गर्दै, नेपालका क्षेत्रीय सरकारी पोर्टलहरूको लागि बहु-टेनेन्ट स्थानीयकृत CMS प्रणालीहरूमा मुख्य अनुसन्धान पूरा गर्नुभयो।",
+        "portalUrl": "https://ioe.edu.np"
+      },
+      {
+        "id": "edu-2",
+        "institutionEn": "Advanced Cloud & Architectural Studies",
+        "institutionNp": "उन्नत क्लाउड र आर्किटेक्चरल अध्ययन",
+        "degreeEn": "Senior Full-Stack Architect Certification",
+        "degreeNp": "वरिष्ठ फुल-स्ट्याक आर्किटेक्ट प्रमाणीकरण",
+        "yearsEn": "2019 - 2020",
+        "yearsNp": "२०७६ - २०७७",
+        "descriptionEn: "Specialization in Microservices, Kubernetes pipelines, and serverless logic structures.",
+        "descriptionNp": "माइक्रोसर्भिसेज, कुबरनेटिस पाइपलाइनहरू, र सर्भरलेस लजिक संरचनाहरूमा विशेषज्ञता।",
+        "detailsEn": "Rigorous certification covering advanced security frameworks, automated load balancing, and Realtime Database event pipelines under massive concurrency constraints.",
+        "detailsNp": "धेरै प्रयोगकर्ताहरूको सक्रिय उपस्थितिको अवस्थामा उन्नत सुरक्षा ढाँचाहरू, स्वचालित लोड सन्तुलन, र रियलटाइम डेटाबेस घटना पाइपलाइनहरू समेट्ने कडा प्रमाणीकरण।",
+        "portalUrl": "https://github.com"
+      }
+    ],
+    "tools": [
+      {
+        "id": "tool-1",
+        "nameEn": "Nepali BS Calendar Converter",
+        "nameNp": "नेपाली बि.सं. क्यालेन्डर रूपान्तरण",
+        "categoryEn": "Date Utilities",
+        "categoryNp": "मिति उपयोगिताहरू",
+        "descriptionEn": "Instant precise conversion between Bikram Sambat dates and Gregorian dates with tithi data mappings.",
+        "descriptionNp": "तिथि डेटा म्यापिङको साथ विक्रम संवत र ग्रेगोरियन मितिहरू बीच तुरुन्त र सटीक रूपान्तरण।",
+        "icon": "Calendar",
+        "url": "https://amitjoshi.info.np/tools/calendar"
+      },
+      {
+        "id": "tool-2",
+        "nameEn": "Unicode to Preeti Converter",
+        "nameNp": "युनिकोडबाट प्रिती रूपान्तरण",
+        "categoryEn": "Font & Text",
+        "categoryNp: "फन्ट र पाठ",
+        "descriptionEn": "Encode standard Unicode text into popular legacy Preeti keyboard layouts instantly.",
+        "descriptionNp": "मानक युनिकोड पाठलाई लोकप्रिय विरासत प्रिती किबोर्ड लेआउटहरूमा तुरुन्तै इन्कोड गर्नुहोस्।",
+        "icon": "Type",
+        "url": "https://amitjoshi.info.np/tools/preeti"
+      },
+      {
+        "id": "tool-3",
+        "nameEn": "Nepali Rupee Formatter",
+        "nameNp": "नेपाली रुपैयाँ ढाँचा",
+        "categoryEn": "Finance",
+        "categoryNp": "वित्त",
+        "descriptionEn": "Format integers into Nepali currency standards with lakhs and crores separators automatically.",
+        "descriptionNp": "पूर्णांकहरूलाई स्वचालित रूपमा लाख र करोड विभाजकहरूसहित नेपाली मुद्रा मानकहरूमा ढाँचा गर्नुहोस्।",
+        "icon": "Coins",
+        "url": "https://amitjoshi.info.np/tools/rupee"
+      },
+      {
+        "id": "tool-4",
+        "nameEn": "Nepal Postcode Finder",
+        "nameNp": "नेपाल हुलाक कोड खोजकर्ता",
+        "categoryEn": "Location",
+        "categoryNp": "स्थान",
+        "descriptionEn": "Interactive search engine to pinpoint official zip codes for all provinces and municipalities.",
+        "descriptionNp": "सबै प्रदेश र नगरपालिकाहरूको लागि आधिकारिक जिप कोडहरू पिनपोइन्ट गर्न अन्तरक्रियात्मक खोज इन्जिन।",
+        "icon": "MapPin",
+        "url": "https://amitjoshi.info.np/tools/zip"
+      },
+      {
+        "id": "tool-5",
+        "nameEn": "Nepali Unicode Keyboard Layout",
+        "nameNp": "नेपाली युनिकोड किबोर्ड लेआउट",
+        "categoryEn": "Keyboard Input",
+        "categoryNp": "किबोर्ड इनपुट",
+        "descriptionEn": "On-screen phonetic keyboard overlay for seamless typing in Devanagari script without installing fonts.",
+        "descriptionNp": "फन्टहरू स्थापना नगरी देवनागरी लिपिमा निर्बाध टाइपिङको लागि अन-स्क्रिन फोनेटिक किबोर्ड ओभरले।",
+        "icon": "Keyboard",
+        "url": "https://amitjoshi.info.np/tools/keyboard"
+      },
+      {
+        "id": "tool-6",
+        "nameEn": "Tax & VAT Calculator Nepal",
+        "nameNp": "कर र भ्याट क्यालकुलेटर नेपाल",
+        "categoryEn": "Finance",
+        "categoryNp": "वित्त",
+        "descriptionEn": "Perform quick calculations for corporate income tax, VAT, and custom duty structures based on current budget parameters.",
+        "descriptionNp": "वर्तमान बजेट मापदण्डहरूको आधारमा कर्पोरेट आयकर, भ्याट, र भन्सार शुल्क संरचनाहरूको लागि द्रुत गणना गर्नुहोस्।",
+        "icon": "Calculator",
+        "url": "https://amitjoshi.info.np/tools/tax"
+      },
+      {
+        "id": "tool-7",
+        "nameEn": "Nepali Speech to Text Voice Kit",
+        "nameNp": "नेपाली स्पिच टु टेक्स्ट भ्वाइस किट",
+        "categoryEn": "Artificial Intelligence",
+        "categoryNp": "कृत्रिम बुद्धिमत्ता",
+        "descriptionEn": "Real-time voice dictation with high precision using lightweight local browser audio triggers.",
+        "descriptionNp": "हल्का स्थानीय ब्राउजर अडियो ट्रिगरहरू प्रयोग गरेर उच्च परिशुद्धताका साथ वास्तविक समय आवाज निर्देशित टाइपिङ।",
+        "icon": "Mic",
+        "url": "https://amitjoshi.info.np/tools/voice"
+      },
+      {
+        "id": "tool-8",
+        "nameEn": "Nepali Text to Speech Synthesizer",
+        "nameNp": "नेपाली टेक्स्ट टु स्पिच सिन्थेसाइजर",
+        "categoryEn": "Artificial Intelligence",
+        "categoryNp": "कृत्रिम बुद्धिमत्ता",
+        "descriptionEn": "Enter Devanagari text to read it aloud instantly with natural cadence audio engines.",
+        "descriptionNp": "प्राकृतिक प्रवाह अडियो इन्जिनहरूको साथ देवनागरी पाठ प्रविष्ट गरी तुरुन्तै सुन्नुहोस्।",
+        "icon": "Volume2",
+        "url": "https://amitjoshi.info.np/tools/tts"
+      },
+      {
+        "id": "tool-9",
+        "nameEn": "Image Size Optimizer Pro",
+        "nameNp": "छवि साइज अप्टिमाइजर प्रो",
+        "categoryEn": "Design Utilities",
+        "categoryNp": "डिजाइन उपयोगिताहरू",
+        "descriptionEn": "Compress and scale heavy dashboard images into modern WebP formats directly on the client canvas.",
+        "descriptionNp": "क्लाइन्ट क्यानभासमा सीधै भारी ड्यासबोर्ड छविहरूलाई आधुनिक WebP ढाँचाहरूमा कम्प्रेस र स्केल गर्नुहोस्।",
+        "icon": "Image",
+        "url": "https://amitjoshi.info.np/tools/image"
+      },
+      {
+        "id": "tool-10",
+        "nameEn": "Secure Password Generator",
+        "nameNp": "सुरक्षित पासवर्ड जनरेटर",
+        "categoryEn": "Security",
+        "categoryNp": "सुरक्षा",
+        "descriptionEn": "Generate strong cryptographic hashes and randomized key configurations with custom seed factors.",
+        "descriptionNp": "अनुकूलन सिड कारकहरूको साथ बलियो क्रिप्टोग्राफिक ह्यास र अनियमित कुञ्जी ढांचाहरू सिर्जना गर्नुहोस्।",
+        "icon": "Lock",
+        "url": "https://amitjoshi.info.np/tools/pass"
+      },
+      {
+        "id": "tool-11",
+        "nameEn": "QR Code Matrix Generator",
+        "nameNp": "क्युआर कोड म्याट्रिक्स जनरेटर",
+        "categoryEn": "Marketing",
+        "categoryNp": "मार्केटिङ",
+        "descriptionEn": "Encode URLs, text payloads, and localized contact details directly into custom-styled QR frames.",
+        "descriptionNp": "अनुकूलन शैली क्युआर फ्रेमहरूमा सिधै URL, पाठ पेलोड, र स्थानीयकृत सम्पर्क विवरणहरू इन्कोड गर्नुहोस्।",
+        "icon": "QrCode",
+        "url": "https://amitjoshi.info.np/tools/qr"
+      },
+      {
+        "id": "tool-12",
+        "nameEn": "JSON schema Beautifier",
+        "nameNp": "जेसन स्कीमा ब्युटिफायर",
+        "categoryEn": "Development Tools",
+        "categoryNp: "विकास उपकरणहरू",
+        "descriptionEn": "Validate, clean, and map deep nested JSON nodes instantly for lightweight frontend states.",
+        "descriptionNp": "हल्का फ्रन्टइन्ड राज्यहरूको लागि गहिरो नेस्टेड जेसन नोडहरू तुरुन्तै प्रमाणित, सफा र म्याप गर्नुहोस्।",
+        "icon": "Code",
+        "url": "https://amitjoshi.info.np/tools/json"
+      },
+      {
+        "id": "tool-13",
+        "nameEn": "Markdown Editor Canvas",
+        "nameNp": "मार्कडाउन सम्पादक क्यानभास",
+        "categoryEn": "Development Tools",
+        "categoryNp: "विकास उपकरणहरू",
+        "descriptionEn": "Real-time side-by-side split screen Markdown writing board with copyable HTML compile.",
+        "descriptionNp": "प्रतिलिपि गर्न मिल्ने HTML संकलनको साथ वास्तविक समयको मार्कडाउन लेखन बोर्ड।",
+        "icon": "FileText",
+        "url": "https://amitjoshi.info.np/tools/markdown"
+      },
+      {
+        "id": "tool-14",
+        "nameEn": "RegEx Patterns Tester",
+        "nameNp": "रेजेक्स प्याटर्न परीक्षक",
+        "categoryEn": "Development Tools",
+        "categoryNp: "विकास उपकरणहरू",
+        "descriptionEn": "Instantly test regular expression filters with dynamic visual matching overlays.",
+        "descriptionNp": "गतिशील भिजुअल म्याचिङ ओभरलेहरूको साथ तुरुन्तै नियमित अभिव्यक्ति फिल्टरहरू परीक्षण गर्नुहोस्।",
+        "icon": "Cpu",
+        "url": "https://amitjoshi.info.np/tools/regex"
+      },
+      {
+        "id": "tool-15",
+        "nameEn": "Base64 Stream Transcoder",
+        "nameNp": "बेस६४ स्ट्रिम ट्रान्सकोडर",
+        "categoryEn": "Security",
+        "categoryNp": "सुरक्षा",
+        "descriptionEn": "Convert raw image binaries directly into clean base64 data strings for direct serverless embedding.",
+        "descriptionNp": "सर्भरलेस एम्बेडिङका लागि कच्चा छवि बाइनरीहरूलाई सीधा बेस६४ डाटा स्ट्रिङहरूमा रूपान्तरण गर्नुहोस्।",
+        "icon": "Radio",
+        "url": "https://amitjoshi.info.np/tools/base64"
+      },
+      {
+        "id": "tool-16",
+        "nameEn": "Nepali Calendar Countdown",
+        "nameNp": "नेपाली क्यालेन्डर काउन्टडाउन",
+        "categoryEn": "Date Utilities",
+        "categoryNp": "मिति उपयोगिताहरू",
+        "descriptionEn": "Count down the days to upcoming major Nepalese festivals like Dashain, Tihar, and Lhosar.",
+        "descriptionNp": "दशैं, तिहार, र ल्होसार जस्ता प्रमुख नेपाली चाडपर्वहरूको काउन्टडाउन गर्नुहोस्।",
+        "icon": "Timer",
+        "url": "https://amitjoshi.info.np/tools/countdown"
+      }
+    ],
+    "interests": [
+      {
+        "id": "int-1",
+        "titleEn": "DevOps & Cloud Architecture",
+        "titleNp": "डेभअप्स र क्लाउड आर्किटेक्चर",
+        "descriptionEn": "Configuring ultra-responsive multi-region database sync pipelines and Dockerizing CMS servers.",
+        "descriptionNp": "अति-उत्तरदायी बहु-क्षेत्र डेटाबेस सिङ्क पाइपलाइनहरू कन्फिगर गर्ने र CMS सर्भरहरू डकराइज गर्ने।",
+        "icon": "Server"
+      },
+      {
+        "id": "int-2",
+        "titleEn": "UX Aesthetics & Typography",
+        "titleNp": "युएक्स सौन्दर्यशास्त्र र टाइपोग्राफी",
+        "descriptionEn": "Obsessing over proper negative spacing, typography pairings, and glowing glassmorphism gradients.",
+        "descriptionNp": "उपयुक्त नेगेटिभ स्पेसिङ, टाइपोग्राफी जोडीहरू, र नियोन चमक ग्रेडियन्टहरूमा ध्यान केन्द्रित गर्ने।",
+        "icon": "PenTool"
+      },
+      {
+        "id": "int-3",
+        "titleEn": "Mentorship & Tech Literacy",
+        "titleNp": "मेन्टरशिप र प्राविधिक साक्षरता",
+        "descriptionEn": "Running free bootcamps and building localization toolkits to reduce entry barriers for young engineers.",
+        "descriptionNp": "युवा इन्जिनियरहरूको प्रवेश बाधा कम गर्न निःशुल्क बुटक्याम्पहरू र स्थानीयकरण टुलकिटहरू निर्माण गर्ने।",
+        "icon": "BookOpen"
+      }
+    ],
+    "services": [
+      {
+        "id": "serv-1",
+        "titleEn": "Custom Enterprise Portal Design",
+        "titleNp": "अनुकूलन इन्टरप्राइज पोर्टल डिजाइन",
+        "descriptionEn": "Production-ready web systems featuring modular layout components, light-dark reactive nodes, and advanced server scaling.",
+        "descriptionNp": "मोड्युलर लेआउट कम्पोनेन्टहरू, लाइट-डार्क रियाक्टिभ नोडहरू, र उन्नत सर्भर स्केलिङ सहितका उत्पादनका लागि तयार वेब प्रणालीहरू।",
+        "priceEn": "NPR 150,000 onwards",
+        "priceNp": "रु १,५०,००० देखि सुरु",
+        "whatsappMessageEn": "Hello Amit, I am interested in your Custom Enterprise Portal Design service. Please let me know your availability for a technical consultation.",
+        "whatsappMessageNp": "नमस्कार अमित, म तपाईंको 'कस्टम इन्टरप्राइज पोर्टल डिजाइन' सेवामा इच्छुक छु। कृपया प्राविधिक परामर्शको लागि उपलब्ध समय जानकारी गराउनुहोला।",
+        "officialLink": "https://amitjoshi.info.np/services/enterprise",
+        "icon": "Layout"
+      },
+      {
+        "id": "serv-2",
+        "titleEn": "Secure Firebase/CMS Architecture",
+        "titleNp": "सुरक्षित फायरबेस/CMS आर्किटेक्चर",
+        "descriptionEn": "Zero-latency database design with strict Firebase rule enforcement, Single Session client verification, and custom Rich-Text state tools.",
+        "descriptionNp": "कडा फायरबेस नियमहरू, सिंगल सेसन क्लाइन्ट प्रमाणिकरण, र अनुकूलन रिच-टेक्स्ट अवस्था उपकरणहरूको साथ शून्य-विलम्बता डाटाबेस डिजाइन।",
+        "priceEn": "NPR 95,000 onwards",
+        "priceNp": "रु ९५,००० देखि सुरु",
+        "whatsappMessageEn": "Hello Amit, I want to inquire about setting up a Secure Firebase/CMS Architecture for my business application. Let's discuss details.",
+        "whatsappMessageNp": "नमस्कार अमित, म मेरो व्यावसायिक अनुप्रयोगको लागि 'सुरक्षित फायरबेस/CMS आर्किटेक्चर' सेटअपको बारेमा सोधपुछ गर्न चाहन्छु। थप छलफल गरौं।",
+        "officialLink": "https://amitjoshi.info.np/services/cms",
+        "icon": "ShieldAlert"
+      },
+      {
+        "id": "serv-3",
+        "titleEn": "Interactive UI/UX & Web Performance Audits",
+        "titleNp": "अन्तरक्रियात्मक UI/UX र वेब प्रदर्शन अडिट",
+        "descriptionEn": "Deep diagnostic audits targeting core web vitals, canvas animations, and localized SEO schemas.",
+        "descriptionNp": "कोर वेब भिटल्स, क्यानभास एनिमेसनहरू, र स्थानीयकृत SEO स्कीमाहरूलाई लक्षित गर्दै गहिरो निदान अडिटहरू।",
+        "priceEn": "NPR 45,000 onwards",
+        "priceNp": "रु ४५,००० देखि सुरु",
+        "whatsappMessageEn": "Hello Amit, I need a performance and UX audit for our existing website portal. Please guide us on the next steps.",
+        "whatsappMessageNp": "नमस्कार अमित, मलाई हाम्रो अवस्थित वेबसाइट पोर्टलको लागि कार्यसम्पादन र UX अडिट आवश्यक छ। कृपया अर्को चरणहरूको लागि मार्गदर्शन गर्नुहोस्।",
+        "officialLink": "https://amitjoshi.info.np/services/audit",
+        "icon": "Gauge"
+      }
+    ],
+    "popup": {
+      "active": true,
+      "imageUrl": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format&fit=crop&q=80",
+      "textEn": "Welcome to Amit Joshi's official portal! The 2026 High-Performance Cloud System is now live with dual-lingual capabilities, instant WhatsApp automated queries, and localized BS-Gregorian calendar utilities.",
+      "textNp": "अमित जोशीको आधिकारिक पोर्टलमा स्वागत छ! २०२६ को उच्च-प्रदर्शन क्लाउड प्रणाली अब द्वि-भाषी क्षमता, तत्काल व्हाट्सएप स्वचालित सोधपुछ, र स्थानीयकृत बि.सं.-ग्रेगोरियन क्यालेन्डर उपयोगिताहरूसँग लाइभ भएको छ।",
+      "buttonEn": "Schedule Consultation Now",
+      "buttonNp": "अहिले नै परामर्श तालिका बनाउनुहोस्",
+      "buttonUrl": "https://wa.me/9779800000000?text=Hello%20Amit%2C%20I%20saw%20your%20announcement%20popup%20and%20want%20to%20schedule%20a%20consultation%21"
+    },
+    "maps": {
+      "permanentUrl": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1m4!2s0x39eb198a307baabf%3A0xb5137c15185d2612!2sKathmandu!5e0!3m2!1sen!2snp!4v1700000000000!5m2!1sen!2snp",
+      "temporaryUrl": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1m4!2s0x39eb1923bf62758f%3A0xb7e5ff8676bf9579!2sLalitpur!5e0!3m2!1sen!2snp!4v1700000000000!5m2!1sen!2snp"
+    },
+    "privacyPolicyEn": "This Privacy Policy describes how we collect, use, and handle your information. Your trust is important to us, and we are committed to protecting your personal data.",
+    "privacyPolicyNp": "यो गोपनीयता नीतिले हामी कसरी तपाईंको जानकारी सङ्कलन, प्रयोग र व्यवस्थापन गर्छौं भन्ने कुरा वर्णन गर्दछ। तपाईंको विश्वास हाम्रो लागि महत्त्वपूर्ण छ, र हामी तपाईंको व्यक्तिगत डेटा सुरक्षित गर्न प्रतिबद्ध छौं।",
+    "termsConditionsEn": "By accessing this website, you agree to be bound by these Terms and Conditions of Use, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws.",
+    "termsConditionsNp": "यस वेबसाइटमा पहुँच गरेर, तपाईं यी नियम र सर्तहरू, सबै लागू हुने कानून र नियमहरूद्वारा बाँधिन सहमत हुनुहुन्छ, र स्थानीय कानूनहरूको पालनाको लागि तपाईं जिम्मेवार हुनुहुन्छ भनी सहमत हुनुहुन्छ।",
+    "downloads": [
+      {
+        "id": "dl-1",
+        "titleEn": "Official Professional CV (PDF)",
+        "titleNp": "आधिकारिक व्यावसायिक सीभी (PDF)",
+        "fileUrl": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        "fileType": "pdf"
+      },
+      {
+        "id": "dl-2",
+        "titleEn": "Service Brochure (JPG)",
+        "titleNp": "सेवा ब्रोसर (JPG)",
+        "fileUrl": "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=1200&auto=format&fit=crop&q=80",
+        "fileType": "jpg"
+      }
+    ],
+    "usefulLinks": [
+      {
+        "id": "ul-1",
+        "titleEn": "Government of Nepal Official Portal",
+        "titleNp": "नेपाल सरकारको आधिकारिक पोर्टल",
+        "url": "https://nepal.gov.np"
+      },
+      {
+        "id": "ul-2",
+        "titleEn": "Tribhuvan University IOE",
+        "titleNp": "त्रिभुवन विश्वविद्यालय आईओई",
+        "url": "https://ioe.edu.np"
+      }
+    ]
+  },
+  "site_stats": {
+    "visits": 342
+  }
+}
