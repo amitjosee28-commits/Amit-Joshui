@@ -11,7 +11,7 @@ import { defaultPortfolioData, PortfolioData } from "./utils/defaultData";
 import { 
   Lock, Mail, Eye, EyeOff, Layout, Globe, Plus, Trash2, Edit3, 
   Save, Eye as PreviewIcon, ArrowLeft, RefreshCw, CheckCircle2, XCircle, 
-  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, MessageSquare, Inbox, Phone, FileText, ShieldCheck, AlertCircle
+  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, MessageSquare, Inbox, Phone, FileText, ShieldCheck, AlertCircle, ExternalLink
 } from "lucide-react";
 import NetworkCanvas from "./components/NetworkCanvas";
 
@@ -1318,8 +1318,9 @@ export default function Dashboard() {
             Manage Sections
           </h3>
           {[
-            { id: "suggestions", label: "Suggestions Box 📥", icon: MessageSquare },
-            { id: "applications", label: "Service Applications 📋", icon: Inbox },
+            { id: "blogs", label: "Dynamic Blog Manager 📝", icon: BookOpen },
+            { id: "customLinks", label: "Custom Permalinks 🔗", icon: ExternalLink },
+            { id: "serviceAdminUsers", label: "Services Admin Users 🛡️", icon: Users },
             { id: "header", label: "Favicons & Branding", icon: Layout },
             { id: "biography", label: "Homepage & Biographies", icon: Users },
             { id: "slides", label: "Cinematic Home Slides", icon: Sliders },
@@ -1350,19 +1351,9 @@ export default function Dashboard() {
               >
                 <Icon className={`h-4 w-4 ${isActive ? "text-cyan-400 animate-pulse" : "text-gray-500"}`} />
                 <span className="flex-1 truncate">{sec.label}</span>
-                {sec.id === "services" && totalUnreadServices > 0 && (
+                {sec.id === "serviceAdminUsers" && totalUnreadServices > 0 && (
                   <span className="px-2 py-0.5 rounded-full bg-red-500 text-white font-mono text-[10px] font-extrabold animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]">
                     {totalUnreadServices}
-                  </span>
-                )}
-                {sec.id === "applications" && unreadAppsCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-red-500 text-white font-mono text-[10px] font-extrabold animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]">
-                    {unreadAppsCount}
-                  </span>
-                )}
-                {sec.id === "suggestions" && unreadSugsCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-red-500 text-white font-mono text-[10px] font-extrabold animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]">
-                    {unreadSugsCount}
                   </span>
                 )}
               </button>
