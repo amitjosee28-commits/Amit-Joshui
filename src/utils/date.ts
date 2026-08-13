@@ -226,3 +226,46 @@ export function formatBlogDate(dateStr: string, lang: 'en' | 'np'): string {
   return cleanStr;
 }
 
+export function formatBlogTimestamp(dateStr?: string, timeStr?: string, lang: 'en' | 'np' = 'en'): string {
+  if (!dateStr) {
+    const defaultVal = "2026-08-13 13:58:23";
+    return lang === 'np' ? toNepaliDigits(defaultVal) : defaultVal;
+  }
+
+  let cleanDate = dateStr.trim();
+  let cleanTime = timeStr ? timeStr.trim() : "";
+
+  // Attempt ISO / Standard Date parse
+  const parsed = new Date(cleanDate);
+  if (!isNaN(parsed.getTime()) && cleanDate.includes('-')) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    cleanDate = `${y}-${m}-${d}`;
+
+    if (!cleanTime) {
+      const hh = String(parsed.getHours()).padStart(2, '0');
+      const mm = String(parsed.getMinutes()).padStart(2, '0');
+      const ss = String(parsed.getSeconds()).padStart(2, '0');
+      cleanTime = `${hh}:${mm}:${ss}`;
+    }
+  }
+
+  const combined = cleanTime ? `${cleanDate} ${cleanTime}` : cleanDate;
+  return lang === 'np' ? toNepaliDigits(combined) : combined;
+}
+
+export function formatBlogLocationDate(dateStr: string, lang: 'en' | 'np'): { dateStr: string; location: string } {
+  const location = lang === 'en' ? 'Kathmandu, Nepal' : 'काठमाडौं, नेपाल';
+  const formattedDate = formatBlogDate(dateStr, lang);
+  
+  // BS Year approximation (2026 -> 2083)
+  const bsAdd = lang === 'np' ? ' (२०८३)' : ' (2083 BS)';
+  
+  return {
+    dateStr: `${formattedDate}${bsAdd}`,
+    location
+  };
+}
+
+
