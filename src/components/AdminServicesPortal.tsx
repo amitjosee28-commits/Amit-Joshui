@@ -237,7 +237,7 @@ export default function AdminServicesPortal() {
 
           <div className="mt-6 pt-4 border-t border-slate-800 text-center">
             <a 
-              href="/"
+              href="./"
               className="text-xs text-slate-400 hover:text-amber-400 transition-colors"
             >
               ← Return to Main Portal Homepage
