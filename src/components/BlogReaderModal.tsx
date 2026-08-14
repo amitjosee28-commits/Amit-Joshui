@@ -57,8 +57,8 @@ export default function BlogReaderModal({ isOpen, blog, onClose }: BlogReaderMod
   const author = blog.authorEn || "Amit Joshi";
   const rawDate = blog.dateEn || "";
   const rawTime = blog.timeEn || "";
-  const timestamp = formatBlogTimestamp(rawDate, rawTime, "en");
-  const dateAndLocation = formatBlogLocationDate(rawDate, "en");
+  const timestamp = formatBlogTimestamp(rawDate, rawTime);
+  const dateAndLocation = formatBlogLocationDate(rawDate);
 
   // Shareable URL
   const currentUrl = typeof window !== "undefined" 

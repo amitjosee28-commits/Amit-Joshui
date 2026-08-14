@@ -56,7 +56,7 @@ export default function BlogSection({ blogs, onOpenBlogModal, isArchivePage = fa
             const content = blog.contentEn || "";
             const rawDate = blog.dateEn || "";
             const rawTime = blog.timeEn || "";
-            const timestamp = formatBlogTimestamp(rawDate, rawTime, "en");
+            const timestamp = formatBlogTimestamp(rawDate, rawTime);
             const cleanExcerpt = content.replace(/[#*`_\[\]()]/g, '').trim();
 
             return (

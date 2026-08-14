@@ -28,9 +28,8 @@ import FormFillupModal from "./components/FormFillupModal";
 import NewsletterSignup from "./components/NewsletterSignup";
 
 export default function App() {
-  // Theme & Language state
+  // Theme state
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [lang, setLang] = useState<"en" | "np">("en");
   
   // Real-time Database data state with localStorage caching for instantaneous boot
   const [portfolioData, setPortfolioData] = useState<PortfolioData>(() => {
@@ -289,22 +288,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [portfolioData.homepage?.slides]);
 
-  // 5. Globalization engine mapping: dynamically parse DOM matching data-en and data-np
-  useEffect(() => {
-    const elements = document.querySelectorAll("[data-en], [data-np]");
-    elements.forEach((el) => {
-      const htmlEl = el as HTMLElement;
-      const enVal = htmlEl.getAttribute("data-en");
-      const npVal = htmlEl.getAttribute("data-np");
-      if (lang === "en" && enVal) {
-        htmlEl.innerText = enVal;
-      } else if (lang === "np" && npVal) {
-        htmlEl.innerText = npVal;
-      }
-    });
-  }, [lang, dataLoaded, portfolioData]);
-
-  // 6. Gemini Smart Search Emulation handler
+  // 6. Gemini Smart Search handler
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -313,14 +297,14 @@ export default function App() {
     
     // Search mapping
     const searchMap = [
-      { keys: ["home", "biography", "bio", "about", "amit", "joshi", "परिचय", "जीवनी"], id: "home-section" },
-      { keys: ["social", "facebook", "instagram", "tiktok", "whatsapp", "contact", "सम्पर्क", "फेसबुक"], id: "social-section" },
-      { keys: ["initiative", "cause", "work", "community", "पहल", "अभियान"], id: "initiatives-section" },
-      { keys: ["tool", "converter", "calendar", "preeti", "rupee", "zip", "कर", "उपकरण"], id: "tools-section" },
-      { keys: ["education", "degree", "university", "ioe", "study", "पढाई", "शिक्षा"], id: "education-section" },
-      { keys: ["blog", "iframe", "news", "ब्लग"], id: "blogs-section" },
-      { keys: ["service", "price", "audit", "consultation", "सेवा", "खरिद"], id: "services-section" },
-      { keys: ["map", "location", "kathmandu", "lalitpur", "ठेगाना", "नक्सा"], id: "contact-section" },
+      { keys: ["home", "biography", "bio", "about", "amit", "joshi"], id: "home-section" },
+      { keys: ["social", "facebook", "instagram", "tiktok", "whatsapp", "contact"], id: "social-section" },
+      { keys: ["initiative", "cause", "work", "community"], id: "initiatives-section" },
+      { keys: ["tool", "converter", "calendar", "preeti", "rupee", "zip"], id: "tools-section" },
+      { keys: ["education", "degree", "university", "ioe", "study"], id: "education-section" },
+      { keys: ["blog", "iframe", "news", "articles"], id: "blogs-section" },
+      { keys: ["service", "price", "audit", "consultation"], id: "services-section" },
+      { keys: ["map", "location", "kathmandu", "lalitpur"], id: "contact-section" },
     ];
 
     // Find first matching route
@@ -342,8 +326,8 @@ export default function App() {
         }, 3000);
       }
     } else {
-      // Show elegant toast warning
-      alert(lang === "en" ? `No section found for "${searchQuery}". Try 'tools', 'services', or 'biography'.` : `"${searchQuery}" को लागि कुनै खण्ड भेटिएन। 'उपकरण', 'सेवा', वा 'जीवनी' खोज्नुहोस्।`);
+      // Show toast warning
+      alert(`No section found for "${searchQuery}". Try 'tools', 'services', or 'biography'.`);
     }
     setSearchQuery("");
   };
@@ -391,9 +375,7 @@ export default function App() {
 
           {/* Localizing Messages */}
           <div className="text-[10px] font-mono text-gray-500 h-4 uppercase tracking-wider animate-pulse">
-            {lang === "en" 
-              ? "Synchronizing localized database content..." 
-              : "स्थानीयकृत डेटाबेस सामग्री सिङ्क्रोनाइज गर्दै..."}
+            Synchronizing database content...
           </div>
         </div>
       </div>
@@ -434,11 +416,8 @@ export default function App() {
           active={portfolioData.popup.active}
           imageUrl={portfolioData.popup.imageUrl}
           textEn={portfolioData.popup.textEn}
-          textNp={portfolioData.popup.textNp}
           buttonEn={portfolioData.popup.buttonEn}
-          buttonNp={portfolioData.popup.buttonNp}
           buttonUrl={portfolioData.popup.buttonUrl}
-          lang={lang}
         />
       )}
 
@@ -463,7 +442,7 @@ export default function App() {
                 )}
                 <div className="flex flex-col justify-center">
                   <span className="text-xl md:text-2xl font-extrabold tracking-tight whitespace-nowrap bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent font-sans leading-none pb-1">
-                    {lang === "en" ? headerData.brandTextEn : headerData.brandTextNp}
+                    {headerData.brandTextEn}
                   </span>
                   <button 
                     onClick={(e) => {
@@ -473,9 +452,7 @@ export default function App() {
                     className="text-xs font-mono uppercase tracking-wider text-gray-400 hover:text-cyan-400 transition-colors flex items-center space-x-1 leading-none whitespace-nowrap cursor-pointer text-left focus:outline-none"
                   >
                     <Sparkles className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />
-                    <span data-en="Connect with Me" data-np="मसंग जोडिनुहोस्">
-                      {lang === "en" ? "Connect with Me" : "मसंग जोडिनुहोस्"}
-                    </span>
+                    <span>Connect with Me</span>
                   </button>
                 </div>
               </div>
@@ -486,34 +463,34 @@ export default function App() {
             {/* Navigation nodes (Desktop) */}
             <nav className="hidden lg:flex items-center space-x-5 text-xs font-semibold uppercase tracking-wider">
               <button onClick={() => handleNavScroll("home-section")} className="hover:text-cyan-400 transition-colors">
-                {lang === "en" ? "Home" : "गृहपृष्ठ"}
+                Home
               </button>
               <button onClick={() => handleNavScroll("social-section")} className="hover:text-cyan-400 transition-colors">
-                {lang === "en" ? "Social Media" : "सामाजिक मिडिया"}
+                Social Media
               </button>
               <button onClick={() => handleNavScroll("initiatives-section")} className="hover:text-cyan-400 transition-colors">
-                {lang === "en" ? "Initiatives" : "पहलहरू"}
+                Initiatives
               </button>
               <button onClick={() => handleNavScroll("tools-section")} className="hover:text-cyan-400 transition-colors">
-                {lang === "en" ? "Tools" : "उपकरणहरू"}
+                Tools
               </button>
               <button onClick={() => handleNavScroll("education-section")} className="hover:text-cyan-400 transition-colors">
-                {lang === "en" ? "Education" : "शिक्षा"}
+                Education
               </button>
               {portfolioData.blogs?.active && (
                 <button onClick={() => handleNavScroll("blogs-section")} className="hover:text-cyan-400 transition-colors">
-                  {lang === "en" ? "Blogs" : "ब्लग"}
+                  Blogs
                 </button>
               )}
               <button onClick={() => handleNavScroll("services-section")} className="hover:text-cyan-400 transition-colors">
-                {lang === "en" ? "Services" : "सेवाहरू"}
+                Services
               </button>
               <button onClick={() => handleNavScroll("contact-section")} className="hover:text-cyan-400 transition-colors">
-                {lang === "en" ? "Contact" : "सम्पर्क"}
+                Contact
               </button>
             </nav>
 
-            {/* Quick Controls: Search, Theme, Lang, Dropdown */}
+            {/* Quick Controls: Search, Theme, Dropdown */}
             <div className="flex items-center space-x-2.5 sm:space-x-3">
               
               {/* Search emulator */}
@@ -522,7 +499,7 @@ export default function App() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={lang === "en" ? "Smart search..." : "खोज्नुहोस्..."}
+                  placeholder="Smart search..."
                   className={`rounded-full px-3 py-1.5 pl-8 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 w-24 lg:w-32 focus:lg:w-44 transition-all duration-300 ${
                     isDarkMode 
                       ? "bg-white/5 border border-white/10 text-white placeholder-gray-500" 
@@ -531,19 +508,6 @@ export default function App() {
                 />
                 <Search className="h-3.5 w-3.5 text-gray-400 absolute left-3 pointer-events-none" />
               </form>
-
-              {/* Language toggle */}
-              <button
-                onClick={() => setLang(lang === "en" ? "np" : "en")}
-                className={`p-2 rounded-xl border transition-all ${
-                  isDarkMode 
-                    ? "bg-white/5 border-white/10 hover:bg-white/15 text-cyan-400" 
-                    : "bg-white border-slate-200 hover:bg-slate-100 text-slate-800"
-                }`}
-                title={lang === "en" ? "Switch to Nepali" : "English मा परिवर्तन गर्नुहोस्"}
-              >
-                <Globe className="h-4 w-4" />
-              </button>
 
               {/* Theme switcher */}
               <button
@@ -564,18 +528,16 @@ export default function App() {
                   onClick={() => handleNavScroll("contact-section")}
                   className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white shadow-lg shadow-cyan-500/10 active:scale-95 duration-150 cursor-pointer"
                 >
-                  <span data-en="Connect with Me" data-np="मसंग जोडिनुहोस्">
-                    {lang === "en" ? "Connect with Me" : "मसंग जोडिनुहोस्"}
-                  </span>
+                  <span>Connect with Me</span>
                 </button>
 
                 {/* VIBROYG Dynamic Nepal Date & Time below the connect button without any boxes */}
                 <div 
                   className="vibroyg-text-gradient font-mono font-bold tracking-tight text-[11px] flex items-center gap-1.5 mt-2 justify-center whitespace-nowrap select-none"
                 >
-                  <span>{lang === "en" ? `${nepalTime.bsDateNum} ${nepalTime.bsMonthEn} ${nepalTime.bsYear}` : `${toNepaliDigits(nepalTime.bsDateNum)} ${nepalTime.bsMonthNp} ${toNepaliDigits(nepalTime.bsYear)}`}</span>
+                  <span>{`${nepalTime.bsDateNum} ${nepalTime.bsMonthEn} ${nepalTime.bsYear}`}</span>
                   <Clock className="h-3.5 w-3.5 inline-block shrink-0 stroke-[2.5]" style={{ stroke: 'url(#vibroyg-gradient)' }} />
-                  <span>{lang === "en" ? nepalTime.timeSemicolon : toNepaliDigits(nepalTime.timeSemicolon)}</span>
+                  <span>{nepalTime.timeSemicolon}</span>
                 </div>
               </div>
 
@@ -598,30 +560,30 @@ export default function App() {
             isDarkMode ? "bg-[#030712]/95 border-white/5" : "bg-white border-slate-200"
           } space-y-3 flex flex-col text-sm font-semibold uppercase tracking-wider`}>
             <button onClick={() => handleNavScroll("home-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Home" : "गृहपृष्ठ"}
+              Home
             </button>
             <button onClick={() => handleNavScroll("social-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Social Media" : "सामाजिक मिडिया"}
+              Social Media
             </button>
             <button onClick={() => handleNavScroll("initiatives-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Initiatives" : "पहलहरू"}
+              Initiatives
             </button>
             <button onClick={() => handleNavScroll("tools-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Tools" : "उपकरणहरू"}
+              Tools
             </button>
             <button onClick={() => handleNavScroll("education-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Education" : "शिक्षा"}
+              Education
             </button>
             {portfolioData.blogs?.active && (
               <button onClick={() => handleNavScroll("blogs-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
-                {lang === "en" ? "Blogs" : "ब्लग"}
+                Blogs
               </button>
             )}
             <button onClick={() => handleNavScroll("services-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Services" : "सेवाहरू"}
+              Services
             </button>
             <button onClick={() => handleNavScroll("contact-section")} className="text-left py-2 hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Contact" : "सम्पर्क"}
+              Contact
             </button>
           </div>
         )}
@@ -662,31 +624,25 @@ export default function App() {
           <div className="space-y-4">
             <span className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-cyan-400/10 border border-cyan-400/20 text-cyan-400 font-mono text-xs uppercase tracking-widest animate-pulse">
               <Sparkles className="h-4 w-4" />
-              <span>
-                {lang === "en" 
-                  ? (homepageData.portalPillEn || "Amit Joshi Official Portal") 
-                  : (homepageData.portalPillNp || "अमित जोशीको आधिकारिक पोर्टल")}
-              </span>
+              <span>{homepageData.portalPillEn || "Amit Joshi Official Portal"}</span>
             </span>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
-              {lang === "en" ? currentSlide.titleEn : currentSlide.titleNp}
+              {currentSlide.titleEn}
             </h1>
 
             <p className="text-base sm:text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed font-sans">
-              {lang === "en" ? currentSlide.subtitleEn : currentSlide.subtitleNp}
+              {currentSlide.subtitleEn}
             </p>
           </div>
 
           {/* 4-line summary block */}
           <div className="bg-white/[0.03] border border-white/8 backdrop-blur-xl rounded-2xl p-6 shadow-2xl max-w-3xl mx-auto text-left space-y-4">
             <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-purple-400 border-b border-white/5 pb-2">
-              {lang === "en" 
-                ? (homepageData.executiveSummaryTitleEn || "Core Executive Summary") 
-                : (homepageData.executiveSummaryTitleNp || "मुख्य कार्यकारी संक्षेप")}
+              {homepageData.executiveSummaryTitleEn || "Core Executive Summary"}
             </h3>
             <p className="text-sm text-gray-300 leading-relaxed font-sans">
-              {lang === "en" ? homepageData.biographySummaryEn : homepageData.biographySummaryNp}
+              {homepageData.biographySummaryEn}
             </p>
           </div>
 
@@ -696,22 +652,14 @@ export default function App() {
               onClick={() => setIsBioOpen(true)}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest bg-cyan-500 text-black hover:bg-cyan-400 transition-all shadow-xl shadow-cyan-500/15 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
             >
-              <span>
-                {lang === "en" 
-                  ? (homepageData.bioBtnEn || "Read Full Biography") 
-                  : (homepageData.bioBtnNp || "पूर्ण जीवनी पढ्नुहोस्")}
-              </span>
+              <span>{homepageData.bioBtnEn || "Read Full Biography"}</span>
             </button>
 
             <button
               onClick={() => handleNavScroll("contact-section")}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/5 hover:bg-cyan-500/10 text-cyan-400 border border-white/10 hover:border-cyan-500/25 transition-all shadow-md transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
             >
-              <span>
-                {lang === "en" 
-                  ? (homepageData.connectBtnEn || "Connect to Me Portal") 
-                  : (homepageData.connectBtnNp || "मेरो पोर्टलमा जोडिनुहोस्")}
-              </span>
+              <span>{homepageData.connectBtnEn || "Connect to Me Portal"}</span>
             </button>
           </div>
 
@@ -721,13 +669,9 @@ export default function App() {
         <BioModal 
           isOpen={isBioOpen} 
           onClose={() => setIsBioOpen(false)} 
-          lang={lang} 
           biographyFullEn={homepageData.biographyFullEn || defaultPortfolioData.homepage.biographyFullEn}
-          biographyFullNp={homepageData.biographyFullNp || defaultPortfolioData.homepage.biographyFullNp}
           biographyTitleEn={homepageData.biographyTitleEn}
-          biographyTitleNp={homepageData.biographyTitleNp}
           biographyTaglineEn={homepageData.biographyTaglineEn}
-          biographyTaglineNp={homepageData.biographyTaglineNp}
         />
       </section>
 
@@ -741,17 +685,17 @@ export default function App() {
         <div className="container mx-auto px-4 relative z-10">
           
           <div className="text-center mb-16">
-            <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-3">
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-3">
               <Landmark className="h-4 w-4 text-cyan-400" />
-              <span className="text-xs font-mono font-bold tracking-wider text-cyan-400 uppercase" data-en="Directory Hub" data-np="निर्देशिका केन्द्र">
-                {lang === "en" ? "Directory Hub" : "निर्देशिका केन्द्र"}
+              <span className="text-xs font-mono font-bold tracking-wider text-cyan-400 uppercase">
+                Directory Hub
               </span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white font-sans" data-en="Social Media Network Hub" data-np="सामाजिक मिडिया नेटवर्क केन्द्र">
-              {lang === "en" ? "Social Media Network Hub" : "सामाजिक मिडिया नेटवर्क केन्द्र"}
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white font-sans">
+              Social Media Network Hub
             </h2>
-            <p className="text-gray-400 mt-3 max-w-xl mx-auto text-sm" data-en="Click external nodes to redirect. Each routing event increments localized database analytics." data-np="बाहिरी नेटवर्कहरूमा जान क्लिक गर्नुहोस्। प्रत्येक लिङ्क क्लिकले डेटाबेस विश्लेषकहरू बढाउँदछ।">
-              {lang === "en" ? "Click external nodes to redirect. Each routing event increments localized database analytics." : "बाहिरी नेटवर्कहरूमा जान क्लिक गर्नुहोस्। प्रत्येक लिङ्क क्लिकले डेटाबेस विश्लेषकहरू बढाउँदछ।"}
+            <p className="text-gray-400 mt-3 max-w-xl mx-auto text-sm">
+              Click external nodes to redirect. Each routing event increments localized database analytics.
             </p>
           </div>
 
@@ -760,14 +704,10 @@ export default function App() {
               <div
                 key={soc.id}
                 onClick={() => {
-                  // Increment Click Counter in Firebase RTDB
                   try {
-                    const clickRef = ref(db, `portfolio/socials`);
-                    // We can find and update clickCount
                     const idx = (portfolioData.socials || defaultPortfolioData.socials).findIndex(s => s.id === soc.id);
                     if (idx !== -1) {
                       const updateCountRef = ref(db, `portfolio/socials/${idx}/clickCount`);
-                      // We can write update if possible
                     }
                   } catch (e) {
                     console.log("Analytics update ignored.");
@@ -785,13 +725,13 @@ export default function App() {
                       {soc.platform}
                     </h3>
                     <p className="text-[10px] text-gray-400 leading-tight mt-2 line-clamp-2">
-                      {lang === "en" ? soc.titleEn : soc.titleNp}
+                      {soc.titleEn}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-gray-500 font-bold uppercase group-hover:text-cyan-400 transition-colors">
-                  <span>{lang === "en" ? "Clicks:" : "क्लिक संख्या:"} {lang === "en" ? soc.clickCount : toNepaliDigits(soc.clickCount || 0)}</span>
+                  <span>Clicks: {soc.clickCount || 0}</span>
                   <ExternalLink className="h-3 w-3" />
                 </div>
               </div>
@@ -805,7 +745,6 @@ export default function App() {
       <div className={searchPulseSection === "initiatives-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
         <InitiativesSection 
           initiatives={portfolioData.initiatives || defaultPortfolioData.initiatives}
-          lang={lang}
         />
       </div>
 
@@ -813,7 +752,6 @@ export default function App() {
       <div className={searchPulseSection === "tools-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
         <ToolkitSection 
           tools={portfolioData.tools || defaultPortfolioData.tools}
-          lang={lang}
         />
       </div>
 
@@ -821,7 +759,6 @@ export default function App() {
       <div className={searchPulseSection === "education-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
         <EducationSection 
           education={portfolioData.education || defaultPortfolioData.education}
-          lang={lang}
         />
       </div>
 
@@ -830,7 +767,6 @@ export default function App() {
         <ServicesSection 
           services={portfolioData.services || defaultPortfolioData.services}
           interests={portfolioData.interests || defaultPortfolioData.interests}
-          lang={lang}
           logoUrl={portfolioData.header?.logoUrl}
           faviconUrl={portfolioData.header?.faviconUrl}
           blogs={portfolioData.blogs?.list || []}
@@ -845,7 +781,6 @@ export default function App() {
       {portfolioData.blogs?.active && (
         <div className={searchPulseSection === "blogs-section" ? "ring-4 ring-amber-500 ring-offset-4 ring-offset-black" : ""}>
           <BlogSection 
-            lang={lang}
             blogs={portfolioData.blogs?.list || []}
             onOpenBlogModal={(blog) => {
               setSelectedBlog(blog);
@@ -858,13 +793,10 @@ export default function App() {
       {/* ================= SECTION 8: CONTACT FORM & ADDRESS MAPS ================= */}
       <div className={searchPulseSection === "contact-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
         <ContactForm 
-          lang={lang}
           permanentMapUrl={portfolioData.maps?.permanentUrl || defaultPortfolioData.maps.permanentUrl}
           temporaryMapUrl={portfolioData.maps?.temporaryUrl || defaultPortfolioData.maps.temporaryUrl}
           permanentAddressEn={portfolioData.maps?.permanentAddressEn || defaultPortfolioData.maps.permanentAddressEn}
-          permanentAddressNp={portfolioData.maps?.permanentAddressNp || defaultPortfolioData.maps.permanentAddressNp}
           temporaryAddressEn={portfolioData.maps?.temporaryAddressEn || defaultPortfolioData.maps.temporaryAddressEn}
-          temporaryAddressNp={portfolioData.maps?.temporaryAddressNp || defaultPortfolioData.maps.temporaryAddressNp}
         />
       </div>
 
@@ -878,7 +810,7 @@ export default function App() {
           
           {/* Newsletter Subscription Component */}
           <div className="mb-12">
-            <NewsletterSignup lang={lang} />
+            <NewsletterSignup />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-white/5">
@@ -889,18 +821,18 @@ export default function App() {
                   <img src={headerData.logoUrl} alt="Logo" className="h-8 w-8 rounded-full object-cover border border-cyan-400" referrerPolicy="no-referrer" />
                 )}
                 <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent font-sans">
-                  {lang === "en" ? headerData.brandTextEn : headerData.brandTextNp}
+                  {headerData.brandTextEn}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 leading-relaxed font-sans" data-en="Engineering modern full-stack web architectures with precise localized experiences." data-np="सटीक स्थानीयकृत अनुभवहरूको साथ आधुनिक पूर्ण-स्ट्याक वेब आर्किटेक्चरहरू इन्जिनियरिङ गर्दै।">
-                {lang === "en" ? "Engineering modern full-stack web architectures with precise localized experiences." : "सटीक स्थानीयकृत अनुभवहरूको साथ आधुनिक पूर्ण-स्ट्याक वेब आर्किटेक्चरहरू इन्जिनियरिङ गर्दै।"}
+              <p className="text-xs text-gray-500 leading-relaxed font-sans">
+                Engineering modern full-stack web architectures with precise localized experiences.
               </p>
             </div>
 
             {/* Column 2: Useful Links Tab */}
             <div className="space-y-4">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400" data-en="Useful Links" data-np="उपयोगी लिङ्कहरू">
-                {lang === "en" ? "Useful Links" : "उपयोगी लिङ्कहरू"}
+              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
+                Useful Links
               </h4>
               <ul className="space-y-2 text-xs">
                 {(portfolioData.usefulLinks || []).length > 0 ? (
@@ -911,14 +843,14 @@ export default function App() {
                       <li key={link.id || idx}>
                         <a href={link.url} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors flex items-center space-x-1.5">
                           <ExternalLink className="h-3 w-3 text-cyan-400/70" />
-                          <span>{lang === "en" ? link.titleEn : link.titleNp}</span>
+                          <span>{link.titleEn}</span>
                         </a>
                       </li>
                     ));
                   })()
                 ) : (
-                  <li className="text-gray-600 font-mono italic text-[11px]" data-en="No links staged" data-np="कुनै लिङ्क उपलब्ध छैन">
-                    {lang === "en" ? "No links staged" : "कुनै लिङ्क उपलब्ध छैन"}
+                  <li className="text-gray-600 font-mono italic text-[11px]">
+                    No links staged
                   </li>
                 )}
               </ul>
@@ -929,8 +861,8 @@ export default function App() {
                 >
                   <span>
                     {isShowingAllUsefulLinks 
-                      ? (lang === "en" ? "Show Less ↑" : "कम देखाउनुहोस् ↑") 
-                      : (lang === "en" ? `Show More (${(portfolioData.usefulLinks || []).length - 8} more) ↓` : `थप देखाउनुहोस् (${toNepaliDigits((portfolioData.usefulLinks || []).length - 8)} थप) ↓`)}
+                      ? "Show Less ↑" 
+                      : `Show More (${(portfolioData.usefulLinks || []).length - 8} more) ↓`}
                   </span>
                 </button>
               )}
@@ -941,62 +873,56 @@ export default function App() {
               <h4 
                 onClick={() => setIsDownloadsModalOpen(true)}
                 className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400 cursor-pointer hover:text-cyan-300 transition-colors flex items-center space-x-1.5"
-                data-en="Downloads Center" 
-                data-np="डाउनलोड केन्द्र"
               >
-                <span>{lang === "en" ? "Downloads Center" : "डाउनलोड केन्द्र"}</span>
+                <span>Downloads Center</span>
                 <span className="text-[10px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded-full font-sans lowercase">
                   {(portfolioData.downloads || []).length}
                 </span>
               </h4>
-              <p className="text-xs text-gray-500 leading-relaxed font-sans" data-en="Access official offline resources, documents, images, and files in a unified sandbox." data-np="एकीकृत स्यान्डबक्समा आधिकारिक स्रोतहरू, कागजातहरू, र छविहरू डाउनलोड गर्नुहोस्।">
-                {lang === "en" ? "Access official offline resources, documents, images, and files in a unified sandbox." : "एकीकृत स्यान्डबक्समा आधिकारिक स्रोतहरू, कागजातहरू, र छविहरू डाउनलोड गर्नुहोस्।"}
+              <p className="text-xs text-gray-500 leading-relaxed font-sans">
+                Access official offline resources, documents, images, and files in a unified sandbox.
               </p>
               <button 
                 onClick={() => setIsDownloadsModalOpen(true)}
                 className="w-full inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-cyan-400/10 text-cyan-400 border border-cyan-400/30 hover:bg-cyan-400/25 active:scale-95 transition-all duration-200"
               >
                 <Download className="h-3.5 w-3.5 animate-pulse" />
-                <span>{lang === "en" ? "Open Downloads Hub" : "डाउनलोड केन्द्र खोल्नुहोस्"}</span>
+                <span>Open Downloads Hub</span>
               </button>
             </div>
 
             {/* Column 4: Legal Information */}
             <div className="space-y-4">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400" data-en="Legal & Compliance" data-np="कानुनी र अनुपालन">
-                {lang === "en" ? "Legal & Compliance" : "कानुनी र अनुपालन"}
+              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
+                Legal & Compliance
               </h4>
               <div className="flex flex-col space-y-2 text-xs">
                 <button 
                   onClick={() => {
                     setLegalModalContent({
-                      title: lang === "en" ? "Privacy Policy" : "गोपनीयता नीति",
-                      content: lang === "en" ? (portfolioData.privacyPolicyEn || "No privacy policy specified yet.") : (portfolioData.privacyPolicyNp || "गोपनीयता नीति अझै सम्म निर्दिष्ट गरिएको छैन।")
+                      title: "Privacy Policy",
+                      content: portfolioData.privacyPolicyEn || "No privacy policy specified yet."
                     });
                     setIsLegalModalOpen(true);
                   }}
                   className="hover:text-cyan-400 transition-colors text-left flex items-center space-x-1.5"
                 >
                   <ShieldCheck className="h-3.5 w-3.5 text-cyan-400/80" />
-                  <span data-en="Privacy Policy" data-np="गोपनीयता नीति">
-                    {lang === "en" ? "Privacy Policy" : "गोपनीयता नीति"}
-                  </span>
+                  <span>Privacy Policy</span>
                 </button>
 
                 <button 
                   onClick={() => {
                     setLegalModalContent({
-                      title: lang === "en" ? "Terms & Conditions" : "शर्त र नियमहरू",
-                      content: lang === "en" ? (portfolioData.termsConditionsEn || "No terms and conditions specified yet.") : (portfolioData.termsConditionsNp || "शर्त र नियमहरू अझै सम्म निर्दिष्ट गरिएको छैन।")
+                      title: "Terms & Conditions",
+                      content: portfolioData.termsConditionsEn || "No terms and conditions specified yet."
                     });
                     setIsLegalModalOpen(true);
                   }}
                   className="hover:text-cyan-400 transition-colors text-left flex items-center space-x-1.5"
                 >
                   <FileSignature className="h-3.5 w-3.5 text-cyan-400/80" />
-                  <span data-en="Terms & Conditions" data-np="शर्त र नियमहरू">
-                    {lang === "en" ? "Terms & Conditions" : "शर्त र नियमहरू"}
-                  </span>
+                  <span>Terms & Conditions</span>
                 </button>
               </div>
             </div>
@@ -1008,12 +934,12 @@ export default function App() {
               <div className="flex flex-col items-center sm:items-start space-y-1.5">
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-500 flex items-center space-x-1">
                   <Sparkles className="h-3 w-3" />
-                  <span>{lang === "en" ? "Total Website Visitors" : "वेबसाइट कुल भ्रमण संख्या"}</span>
+                  <span>Total Website Visitors</span>
                 </span>
                 <div className="flex items-center space-x-1.5 bg-black/80 p-2 rounded-2xl border border-amber-500/30 shadow-xl">
                   {String(visitCount).padStart(6, '0').split('').map((digit, i) => (
                     <div key={i} className="odometer-digit">
-                      {lang === "en" ? digit : toNepaliDigits(digit)}
+                      {digit}
                     </div>
                   ))}
                 </div>
@@ -1022,11 +948,11 @@ export default function App() {
               <div className="text-[11px] font-mono text-gray-400 space-y-1 text-center sm:text-left border-l border-white/10 sm:pl-6 pt-2 sm:pt-0">
                 <div className="flex items-center justify-center sm:justify-start space-x-1.5">
                   <Clock className="h-3.5 w-3.5 text-amber-400" />
-                  <span>{lang === "en" ? "Last Edited:" : "अन्तिम अपडेट वर्ष:"}</span>
+                  <span>Last Edited:</span>
                   <strong className="text-amber-300 font-bold">{portfolioData.lastEdited || "2026-08-12 18:30:00"}</strong>
                 </div>
                 <p className="text-[10px] text-gray-500">
-                  {lang === "en" ? "Realtime sync connected to Cloud Node" : "क्लाउड नोडसँग वास्तविक समय सिङ्क"}
+                  Realtime sync connected to Cloud Node
                 </p>
               </div>
             </div>
@@ -1052,7 +978,6 @@ export default function App() {
         isOpen={isDownloadsModalOpen} 
         onClose={() => setIsDownloadsModalOpen(false)} 
         downloads={portfolioData.downloads || []} 
-        lang={lang}
         isDarkMode={isDarkMode}
       />
 
@@ -1060,7 +985,6 @@ export default function App() {
       <BlogReaderModal
         isOpen={isBlogModalOpen}
         blog={selectedBlog}
-        lang={lang}
         onClose={() => {
           setIsBlogModalOpen(false);
           setSelectedBlog(null);
@@ -1070,7 +994,6 @@ export default function App() {
       <ToolRedirectModal
         isOpen={isToolModalOpen}
         tool={selectedTool}
-        lang={lang}
         onClose={() => {
           setIsToolModalOpen(false);
           setSelectedTool(null);
@@ -1081,7 +1004,6 @@ export default function App() {
         isOpen={formModalState.isOpen}
         formTitle={formModalState.title}
         targetId={formModalState.targetId}
-        lang={lang}
         onClose={() => setFormModalState({ isOpen: false, title: "", targetId: "" })}
       />
 
@@ -1129,20 +1051,19 @@ interface DownloadsModalProps {
   downloads: Array<{
     id?: string;
     titleEn: string;
-    titleNp: string;
+    titleNp?: string;
     fileUrl: string;
     fileType?: string;
   }>;
-  lang: "en" | "np";
   isDarkMode: boolean;
 }
 
-const DownloadsModal: React.FC<DownloadsModalProps> = ({ isOpen, onClose, downloads, lang, isDarkMode }) => {
+const DownloadsModal: React.FC<DownloadsModalProps> = ({ isOpen, onClose, downloads, isDarkMode }) => {
   const [searchTerm, setSearchTerm] = React.useState("");
   if (!isOpen) return null;
 
   const filtered = downloads.filter(dl => {
-    const title = lang === "en" ? dl.titleEn : dl.titleNp;
+    const title = dl.titleEn || "";
     return title.toLowerCase().includes(searchTerm.toLowerCase()) || (dl.fileType || "").toLowerCase().includes(searchTerm.toLowerCase());
   });
 
@@ -1164,7 +1085,7 @@ const DownloadsModal: React.FC<DownloadsModalProps> = ({ isOpen, onClose, downlo
           <div className="flex items-center space-x-2">
             <Download className="h-5 w-5 text-cyan-400 animate-bounce" />
             <h3 className={`text-lg font-bold tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-              {lang === "en" ? "Downloads Center" : "डाउनलोड केन्द्र"}
+              Downloads Center
             </h3>
           </div>
           <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${
@@ -1181,7 +1102,7 @@ const DownloadsModal: React.FC<DownloadsModalProps> = ({ isOpen, onClose, downlo
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={lang === "en" ? "Filter resources..." : "फाइलहरू खोज्नुहोस्..."}
+              placeholder="Filter resources..."
               className={`w-full rounded-xl py-2 pl-9 pr-4 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 ${
                 isDarkMode 
                   ? "bg-white/5 border border-white/10 text-white placeholder-gray-500" 
@@ -1217,7 +1138,7 @@ const DownloadsModal: React.FC<DownloadsModalProps> = ({ isOpen, onClose, downlo
                       </div>
                       <div className="space-y-1">
                         <p className={`text-xs font-semibold leading-snug line-clamp-2 ${isDarkMode ? "text-white" : "text-slate-800"}`}>
-                          {lang === "en" ? dl.titleEn : dl.titleNp}
+                          {dl.titleEn}
                         </p>
                         <span className="text-[9px] font-mono uppercase bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-full font-bold">
                           {dl.fileType || "File"}
@@ -1228,13 +1149,13 @@ const DownloadsModal: React.FC<DownloadsModalProps> = ({ isOpen, onClose, downlo
                     <div className="mt-4 pt-3 border-t border-dashed border-white/5 flex justify-end">
                       <a 
                         href={dl.fileUrl} 
-                        download={lang === "en" ? dl.titleEn : dl.titleNp} 
+                        download={dl.titleEn} 
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 transition-colors"
                       >
                         <Download className="h-3 w-3" />
-                        <span>{lang === "en" ? "Download" : "डाउनलोड"}</span>
+                        <span>Download</span>
                       </a>
                     </div>
                   </div>
@@ -1247,7 +1168,7 @@ const DownloadsModal: React.FC<DownloadsModalProps> = ({ isOpen, onClose, downlo
                 <FileText className="h-6 w-6" />
               </div>
               <p className={`text-xs font-mono italic ${isDarkMode ? "text-gray-500" : "text-slate-400"}`}>
-                {lang === "en" ? "No assets found matching the filter" : "खोजिएको फाइल भेटिएन"}
+                No assets found matching the filter
               </p>
             </div>
           )}
@@ -1261,19 +1182,10 @@ const DownloadsModal: React.FC<DownloadsModalProps> = ({ isOpen, onClose, downlo
             onClick={onClose} 
             className="px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 transition-colors"
           >
-            {lang === "en" ? "Close" : "बन्द गर्नुहोस्"}
+            Close
           </button>
         </div>
       </div>
     </div>
   );
 };
-
-// Full local Nepali digits translator
-function toNepaliDigits(num: number | string): string {
-  const nepaliDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
-  return num.toString().split('').map(char => {
-    const parsed = parseInt(char);
-    return isNaN(parsed) ? char : nepaliDigits[parsed];
-  }).join('');
-}
