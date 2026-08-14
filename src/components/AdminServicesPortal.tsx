@@ -71,31 +71,48 @@ export default function AdminServicesPortal() {
         setSuggestions([]);
       }
 
-      // 2. Applications
-      const appSnap = await get(ref(db, "applications"));
-      if (appSnap.exists()) {
-        const data = appSnap.val();
-        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
-        setApplications(list);
-      } else {
-        setApplications([]);
+      // 2. Applications (checks service_applications and fallback applications)
+      let appList: any[] = [];
+      const serviceAppSnap = await get(ref(db, "service_applications"));
+      if (serviceAppSnap.exists()) {
+        const data = serviceAppSnap.val();
+        appList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
       }
+      const legacyAppSnap = await get(ref(db, "applications"));
+      if (legacyAppSnap.exists()) {
+        const data = legacyAppSnap.val();
+        Object.keys(data).forEach(key => {
+          if (!appList.some(a => a.id === key)) {
+            appList.push({ id: key, ...data[key] });
+          }
+        });
+      }
+      appList.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+      setApplications(appList);
 
-      // 3. Newsletter Subscribers
+      // 3. Newsletter Subscribers (from Firebase /subscribers, /portfolio/subscribers, and localStorage)
       let subsList: any[] = [];
       const subSnap = await get(ref(db, "subscribers"));
       if (subSnap.exists()) {
         const data = subSnap.val();
         subsList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
       }
-      // Also merge any local subscribers stored on this device
+      const portSubSnap = await get(ref(db, "portfolio/subscribers"));
+      if (portSubSnap.exists()) {
+        const data = portSubSnap.val();
+        Object.keys(data).forEach(key => {
+          if (!subsList.some(s => s.id === key || (s.email && s.email.toLowerCase() === data[key].email?.toLowerCase()))) {
+            subsList.push({ id: key, ...data[key] });
+          }
+        });
+      }
+      // Merge localStorage subscribers
       const localSubsStr = localStorage.getItem("newsletter_subscribers");
       if (localSubsStr) {
         try {
           const localSubs: any[] = JSON.parse(localSubsStr);
           localSubs.forEach(ls => {
-            if (!subsList.some(s => s.email?.toLowerCase() === ls.email?.toLowerCase() || s.id === ls.id)) {
+            if (!subsList.some(s => (s.email && ls.email && s.email.toLowerCase() === ls.email.toLowerCase()) || s.id === ls.id)) {
               subsList.push(ls);
             }
           });
@@ -113,8 +130,38 @@ export default function AdminServicesPortal() {
   useEffect(() => {
     if (isLoggedIn) {
       fetchData();
-      const interval = setInterval(fetchData, 10000); // Poll every 10 seconds
-      return () => clearInterval(interval);
+
+      // Realtime listener for subscribers
+      const unsubSubs = onValue(ref(db, "subscribers"), () => {
+        fetchData();
+      });
+      const unsubPortSubs = onValue(ref(db, "portfolio/subscribers"), () => {
+        fetchData();
+      });
+      const unsubApps = onValue(ref(db, "service_applications"), () => {
+        fetchData();
+      });
+      const unsubSugs = onValue(ref(db, "suggestions"), () => {
+        fetchData();
+      });
+
+      const handleCustomSubEvent = () => {
+        fetchData();
+      };
+      window.addEventListener("newsletter_subscribers_updated", handleCustomSubEvent);
+      window.addEventListener("storage", handleCustomSubEvent);
+
+      const interval = setInterval(fetchData, 8000); // Polling safeguard
+
+      return () => {
+        unsubSubs();
+        unsubPortSubs();
+        unsubApps();
+        unsubSugs();
+        window.removeEventListener("newsletter_subscribers_updated", handleCustomSubEvent);
+        window.removeEventListener("storage", handleCustomSubEvent);
+        clearInterval(interval);
+      };
     }
   }, [isLoggedIn]);
 
@@ -173,7 +220,25 @@ export default function AdminServicesPortal() {
     const itemLabel = type === "applications" ? "application" : type === "suggestions" ? "message" : "subscriber";
     if (!window.confirm(`Are you sure you want to delete this ${itemLabel}?`)) return;
     try {
-      await set(ref(db, `${type}/${id}`), null);
+      if (type === "subscribers") {
+        await set(ref(db, `subscribers/${id}`), null);
+        await set(ref(db, `portfolio/subscribers/${id}`), null);
+        // Remove from local storage
+        const localSubsStr = localStorage.getItem("newsletter_subscribers");
+        if (localSubsStr) {
+          try {
+            const localSubs: any[] = JSON.parse(localSubsStr);
+            const filtered = localSubs.filter(s => s.id !== id);
+            localStorage.setItem("newsletter_subscribers", JSON.stringify(filtered));
+          } catch (e) {}
+        }
+      } else if (type === "applications") {
+        await set(ref(db, `service_applications/${id}`), null);
+        await set(ref(db, `applications/${id}`), null);
+      } else {
+        await set(ref(db, `suggestions/${id}`), null);
+      }
+      
       if (selectedItem?.id === id) setSelectedItem(null);
       fetchData();
     } catch (e) {
@@ -184,7 +249,12 @@ export default function AdminServicesPortal() {
   // Toggle Read Status
   const handleToggleRead = async (type: "applications" | "suggestions", id: string, currentRead: boolean) => {
     try {
-      await set(ref(db, `${type}/${id}/isRead`), !currentRead);
+      if (type === "applications") {
+        await set(ref(db, `service_applications/${id}/isRead`), !currentRead);
+        await set(ref(db, `applications/${id}/isRead`), !currentRead);
+      } else {
+        await set(ref(db, `suggestions/${id}/isRead`), !currentRead);
+      }
       fetchData();
     } catch (e) {
       console.error(e);

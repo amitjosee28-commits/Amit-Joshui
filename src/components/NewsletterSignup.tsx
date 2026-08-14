@@ -69,13 +69,21 @@ export default function NewsletterSignup({ lang }: NewsletterSignupProps) {
       // Save to localStorage immediately
       localSubs.unshift(subscriberRecord);
       localStorage.setItem("newsletter_subscribers", JSON.stringify(localSubs));
+      window.dispatchEvent(new CustomEvent("newsletter_subscribers_updated", { detail: subscriberRecord }));
 
-      // Attempt to save to Firebase Realtime Database
+      // Save to Firebase Realtime Database
       try {
         const subRef = ref(db, `subscribers/${subId}`);
         await set(subRef, subscriberRecord);
       } catch (fbErr) {
-        console.warn("Firebase subscriber sync background warning:", fbErr);
+        console.warn("Firebase subscriber sync to /subscribers warning:", fbErr);
+      }
+
+      try {
+        const portSubRef = ref(db, `portfolio/subscribers/${subId}`);
+        await set(portSubRef, subscriberRecord);
+      } catch (fbErr2) {
+        console.warn("Firebase subscriber sync to /portfolio/subscribers warning:", fbErr2);
       }
 
       setSuccess(true);
