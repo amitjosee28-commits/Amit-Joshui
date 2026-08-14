@@ -221,17 +221,50 @@ export default function AdminServicesPortal() {
     if (!window.confirm(`Are you sure you want to delete this ${itemLabel}?`)) return;
     try {
       if (type === "subscribers") {
+        const subItem = subscribers.find((s) => s.id === id);
+        const targetEmail = subItem?.email?.toLowerCase();
+
         await set(ref(db, `subscribers/${id}`), null);
         await set(ref(db, `portfolio/subscribers/${id}`), null);
+
+        // If email is known, purge any duplicate nodes across database
+        if (targetEmail) {
+          try {
+            const snap1 = await get(ref(db, "subscribers"));
+            if (snap1.exists()) {
+              const val = snap1.val();
+              for (const k of Object.keys(val)) {
+                if (val[k]?.email?.toLowerCase() === targetEmail) {
+                  await set(ref(db, `subscribers/${k}`), null);
+                }
+              }
+            }
+          } catch (e) {}
+
+          try {
+            const snap2 = await get(ref(db, "portfolio/subscribers"));
+            if (snap2.exists()) {
+              const val = snap2.val();
+              for (const k of Object.keys(val)) {
+                if (val[k]?.email?.toLowerCase() === targetEmail) {
+                  await set(ref(db, `portfolio/subscribers/${k}`), null);
+                }
+              }
+            }
+          } catch (e) {}
+        }
+
         // Remove from local storage
         const localSubsStr = localStorage.getItem("newsletter_subscribers");
         if (localSubsStr) {
           try {
             const localSubs: any[] = JSON.parse(localSubsStr);
-            const filtered = localSubs.filter(s => s.id !== id);
+            const filtered = localSubs.filter((s) => s.id !== id && (!targetEmail || s.email?.toLowerCase() !== targetEmail));
             localStorage.setItem("newsletter_subscribers", JSON.stringify(filtered));
           } catch (e) {}
         }
+
+        window.dispatchEvent(new CustomEvent("newsletter_subscribers_updated", { detail: { id, targetEmail } }));
       } else if (type === "applications") {
         await set(ref(db, `service_applications/${id}`), null);
         await set(ref(db, `applications/${id}`), null);
