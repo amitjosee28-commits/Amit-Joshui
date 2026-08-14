@@ -83,15 +83,26 @@ export default function AdminServicesPortal() {
       }
 
       // 3. Newsletter Subscribers
+      let subsList: any[] = [];
       const subSnap = await get(ref(db, "subscribers"));
       if (subSnap.exists()) {
         const data = subSnap.val();
-        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
-        setSubscribers(list);
-      } else {
-        setSubscribers([]);
+        subsList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
       }
+      // Also merge any local subscribers stored on this device
+      const localSubsStr = localStorage.getItem("newsletter_subscribers");
+      if (localSubsStr) {
+        try {
+          const localSubs: any[] = JSON.parse(localSubsStr);
+          localSubs.forEach(ls => {
+            if (!subsList.some(s => s.email?.toLowerCase() === ls.email?.toLowerCase() || s.id === ls.id)) {
+              subsList.push(ls);
+            }
+          });
+        } catch (e) {}
+      }
+      subsList.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+      setSubscribers(subsList);
     } catch (err) {
       console.error("Error loading services data:", err);
     } finally {

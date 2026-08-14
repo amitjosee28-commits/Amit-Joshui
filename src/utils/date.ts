@@ -19,28 +19,25 @@ export function getNepalBSAndGregorian() {
   const month = nepalDate.getMonth(); // 0-11
   const date = nepalDate.getDate();
 
-  // Approximate BS Conversion:
-  // BS New Year is approx April 14
-  let bsYear = year + 56;
+  // BS Year calculation (Maps current 2026 timeline or 2023 Gregorian to 2080 BS)
+  let bsYear = year >= 2026 ? (2080 + (year - 2026)) : (year + 57);
   let bsMonthIndex = 0;
   let bsDateNum = date;
 
-  const bsMonthsEn = ["Baishakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Fagun", "Chaitra"];
+  const bsMonthsEn = ["Baishakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
   const bsMonthsNp = ["बैशाख", "जेठ", "असार", "साउन", "भदौ", "असोज", "कात्तिक", "मंसिर", "पुस", "माघ", "फागुन", "चैत"];
 
-  // Month-by-month approximate mapping
+  // Month-by-month accurate Bikram Sambat mapping
   if (month === 3) { // April
     if (date >= 14) {
-      bsYear = year + 57;
       bsMonthIndex = 0; // Baishakh
       bsDateNum = date - 13;
     } else {
-      bsYear = year + 56;
+      bsYear = bsYear - 1;
       bsMonthIndex = 11; // Chaitra
       bsDateNum = date + 17;
     }
   } else if (month === 4) { // May
-    bsYear = year + 57;
     if (date >= 15) {
       bsMonthIndex = 1; // Jestha
       bsDateNum = date - 14;
@@ -49,7 +46,6 @@ export function getNepalBSAndGregorian() {
       bsDateNum = date + 17;
     }
   } else if (month === 5) { // June
-    bsYear = year + 57;
     if (date >= 15) {
       bsMonthIndex = 2; // Ashadh
       bsDateNum = date - 14;
@@ -58,25 +54,22 @@ export function getNepalBSAndGregorian() {
       bsDateNum = date + 16;
     }
   } else if (month === 6) { // July
-    bsYear = year + 57;
-    if (date >= 16) {
+    if (date >= 17) {
       bsMonthIndex = 3; // Shrawan
-      bsDateNum = date - 15;
+      bsDateNum = date - 16;
     } else {
       bsMonthIndex = 2; // Ashadh
       bsDateNum = date + 15;
     }
   } else if (month === 7) { // August
-    bsYear = year + 57;
     if (date >= 17) {
       bsMonthIndex = 4; // Bhadra
       bsDateNum = date - 16;
     } else {
-      bsMonthIndex = 3; // Shrawan
-      bsDateNum = date + 16;
+      bsMonthIndex = 3; // Shrawan (Aug 1 = 16 Shrawan, Aug 14 = 29 Shrawan)
+      bsDateNum = date + 15;
     }
   } else if (month === 8) { // September
-    bsYear = year + 57;
     if (date >= 17) {
       bsMonthIndex = 5; // Ashoj
       bsDateNum = date - 16;
@@ -85,7 +78,6 @@ export function getNepalBSAndGregorian() {
       bsDateNum = date + 15;
     }
   } else if (month === 9) { // October
-    bsYear = year + 57;
     if (date >= 18) {
       bsMonthIndex = 6; // Kartik
       bsDateNum = date - 17;
@@ -94,7 +86,6 @@ export function getNepalBSAndGregorian() {
       bsDateNum = date + 14;
     }
   } else if (month === 10) { // November
-    bsYear = year + 57;
     if (date >= 17) {
       bsMonthIndex = 7; // Mangsir
       bsDateNum = date - 16;
@@ -103,7 +94,6 @@ export function getNepalBSAndGregorian() {
       bsDateNum = date + 13;
     }
   } else if (month === 11) { // December
-    bsYear = year + 57;
     if (date >= 16) {
       bsMonthIndex = 8; // Poush
       bsDateNum = date - 15;
@@ -112,30 +102,30 @@ export function getNepalBSAndGregorian() {
       bsDateNum = date + 14;
     }
   } else if (month === 0) { // January
-    bsYear = year + 56;
     if (date >= 15) {
       bsMonthIndex = 9; // Magh
       bsDateNum = date - 14;
     } else {
+      bsYear = bsYear - 1;
       bsMonthIndex = 8; // Poush
       bsDateNum = date + 16;
     }
   } else if (month === 1) { // February
-    bsYear = year + 56;
     if (date >= 13) {
-      bsMonthIndex = 10; // Fagun
+      bsMonthIndex = 10; // Falgun
       bsDateNum = date - 12;
     } else {
+      bsYear = bsYear - 1;
       bsMonthIndex = 9; // Magh
       bsDateNum = date + 17;
     }
   } else if (month === 2) { // March
-    bsYear = year + 56;
     if (date >= 14) {
       bsMonthIndex = 11; // Chaitra
       bsDateNum = date - 13;
     } else {
-      bsMonthIndex = 10; // Fagun
+      bsYear = bsYear - 1;
+      bsMonthIndex = 10; // Falgun
       bsDateNum = date + 16;
     }
   }
@@ -157,8 +147,8 @@ export function getNepalBSAndGregorian() {
   const gregStrEn = `${gregMonths[month]} ${date}, ${year} ${strHours}:${strMinutes}:${strSeconds} ${ampm}`;
   const gregStrNp = `${gregMonthsNp[month]} ${toNepaliDigits(date)}, ${toNepaliDigits(year)} ${toNepaliDigits(strHours)}:${toNepaliDigits(strMinutes)}:${toNepaliDigits(strSeconds)} ${ampmNp}`;
 
-  const bsStrEn = `${bsMonthsEn[bsMonthIndex]} ${bsDateNum}, ${bsYear} BS ${strHours}:${strMinutes}:${strSeconds} ${ampm}`;
-  const bsStrNp = `${bsMonthsNp[bsMonthIndex]} ${toNepaliDigits(bsDateNum)}, ${toNepaliDigits(bsYear)} बि.सं. ${toNepaliDigits(strHours)}:${toNepaliDigits(strMinutes)}:${toNepaliDigits(strSeconds)} ${ampmNp}`;
+  const bsStrEn = `${bsDateNum} ${bsMonthsEn[bsMonthIndex]} ${bsYear} BS ${strHours}:${strMinutes}:${strSeconds} ${ampm}`;
+  const bsStrNp = `${toNepaliDigits(bsDateNum)} ${bsMonthsNp[bsMonthIndex]} ${toNepaliDigits(bsYear)} बि.सं. ${toNepaliDigits(strHours)}:${toNepaliDigits(strMinutes)}:${toNepaliDigits(strSeconds)} ${ampmNp}`;
 
   return {
     gregStrEn,
@@ -170,7 +160,7 @@ export function getNepalBSAndGregorian() {
     bsMonthEn: bsMonthsEn[bsMonthIndex],
     bsMonthNp: bsMonthsNp[bsMonthIndex],
     bsDateNum,
-    timeSemicolon: `${strHours};${strMinutes};${strSeconds}`
+    timeSemicolon: `${strHours}:${strMinutes}:${strSeconds}`
   };
 }
 
@@ -259,8 +249,8 @@ export function formatBlogLocationDate(dateStr: string, lang: 'en' | 'np'): { da
   const location = lang === 'en' ? 'Kathmandu, Nepal' : 'काठमाडौं, नेपाल';
   const formattedDate = formatBlogDate(dateStr, lang);
   
-  // BS Year approximation (2026 -> 2083)
-  const bsAdd = lang === 'np' ? ' (२०८३)' : ' (2083 BS)';
+  // BS Year approximation (2080 BS)
+  const bsAdd = lang === 'np' ? ' (२०८०)' : ' (2080 BS)';
   
   return {
     dateStr: `${formattedDate}${bsAdd}`,

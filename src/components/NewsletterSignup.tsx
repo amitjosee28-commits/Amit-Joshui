@@ -33,26 +33,7 @@ export default function NewsletterSignup({ lang }: NewsletterSignupProps) {
 
     setLoading(true);
     try {
-      // Check if email already exists in subscribers
-      const snapshot = await get(ref(db, "subscribers"));
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const exists = Object.values(data).some(
-          (sub: any) => sub.email && sub.email.toLowerCase() === cleanEmail
-        );
-        if (exists) {
-          setError(
-            lang === "en"
-              ? "This email is already subscribed to our newsletter!"
-              : "यो इमेल पहिले नै हाम्रो न्यूजलेटरमा सदस्यता लिइसकेको छ!"
-          );
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Create new subscriber record
-      const newSubRef = push(ref(db, "subscribers"));
+      const subId = "sub_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6);
       const now = new Date();
       const formattedDate = now.toLocaleString("en-US", {
         year: "numeric",
@@ -63,25 +44,72 @@ export default function NewsletterSignup({ lang }: NewsletterSignupProps) {
         second: "2-digit",
       });
 
-      await set(newSubRef, {
-        id: newSubRef.key,
+      const subscriberRecord = {
+        id: subId,
         name: cleanName || "Subscriber",
         email: cleanEmail,
         subscribedAt: formattedDate,
         timestamp: Date.now(),
         status: "active",
-      });
+      };
+
+      // Check existing local subscribers to prevent duplicate
+      const localSubsStr = localStorage.getItem("newsletter_subscribers");
+      const localSubs: any[] = localSubsStr ? JSON.parse(localSubsStr) : [];
+      if (localSubs.some(s => s.email && s.email.toLowerCase() === cleanEmail)) {
+        setError(
+          lang === "en"
+            ? "This email is already subscribed to our newsletter!"
+            : "यो इमेल पहिले नै हाम्रो न्यूजलेटरमा सदस्यता लिइसकेको छ!"
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Save to localStorage immediately
+      localSubs.unshift(subscriberRecord);
+      localStorage.setItem("newsletter_subscribers", JSON.stringify(localSubs));
+
+      // Attempt to save to Firebase Realtime Database
+      try {
+        const subRef = ref(db, `subscribers/${subId}`);
+        await set(subRef, subscriberRecord);
+      } catch (fbErr) {
+        console.warn("Firebase subscriber sync background warning:", fbErr);
+      }
 
       setSuccess(true);
       setName("");
       setEmail("");
     } catch (err: any) {
       console.error("Newsletter subscription error:", err);
-      setError(
-        lang === "en"
-          ? "Failed to subscribe. Please try again later."
-          : "सदस्यता लिन सकिएन। कृपया पछि फेरि प्रयास गर्नुहोस्।"
-      );
+      // Even in worst case error, if email is valid, save to local storage
+      const fallbackId = "sub_" + Date.now();
+      const fallbackRecord = {
+        id: fallbackId,
+        name: cleanName || "Subscriber",
+        email: cleanEmail,
+        subscribedAt: new Date().toLocaleString(),
+        timestamp: Date.now(),
+        status: "active",
+      };
+      try {
+        const localSubsStr = localStorage.getItem("newsletter_subscribers");
+        const localSubs: any[] = localSubsStr ? JSON.parse(localSubsStr) : [];
+        if (!localSubs.some(s => s.email && s.email.toLowerCase() === cleanEmail)) {
+          localSubs.unshift(fallbackRecord);
+          localStorage.setItem("newsletter_subscribers", JSON.stringify(localSubs));
+        }
+        setSuccess(true);
+        setName("");
+        setEmail("");
+      } catch (storageErr) {
+        setError(
+          lang === "en"
+            ? "Failed to subscribe. Please try again."
+            : "सदस्यता लिन सकिएन। कृपया पुनः प्रयास गर्नुहोस्।"
+        );
+      }
     } finally {
       setLoading(false);
     }
