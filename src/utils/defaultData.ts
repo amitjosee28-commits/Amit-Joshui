@@ -44,6 +44,7 @@ export interface ServiceAdminUser {
   name: string;
   role: string;
   createdAt: string;
+  status?: "active" | "restricted";
 }
 
 export interface PortfolioData {
@@ -405,7 +406,7 @@ export const defaultPortfolioData: PortfolioData = {
     { id: "pl-11", type: "blog", slug: "full-stack-web-architecture-2026", targetId: "blog-1", titleEn: "Modern Enterprise Web Architecture", titleNp: "आधुनिक इन्टरप्राइज वेब आर्किटेक्चर" }
   ],
   serviceAdminUsers: [
-    { id: "sau-1", username: "loginadmin", pin: "1860", name: "Default Service Admin", role: "services_admin", createdAt: "2026-08-12T00:00:00.000Z" }
+    { id: "sau-1", username: "loginadmin", pin: "1860", name: "Primary Services Admin", role: "services_admin", status: "active", createdAt: "2026-08-12T00:00:00.000Z" }
   ],
   lastEdited: "August 12, 2026, 11:35 AM",
   education: [

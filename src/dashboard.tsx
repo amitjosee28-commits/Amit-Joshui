@@ -431,8 +431,10 @@ export default function Dashboard() {
     username: "",
     pin: "",
     name: "",
-    role: "services_admin"
+    role: "services_admin",
+    status: "active" as "active" | "restricted"
   });
+  const [showPins, setShowPins] = useState<Record<string, boolean>>({});
 
   // VIBGYOR Preset list for rich text mixer
   const vibgyorColors = [
@@ -1063,37 +1065,90 @@ export default function Dashboard() {
   };
 
   // Service admin user credentials manager handlers
-  const handleSaveServiceUser = () => {
-    if (!serviceUserForm.username || !serviceUserForm.pin) {
+  const handleSaveServiceUser = async () => {
+    if (!serviceUserForm.username.trim() || !serviceUserForm.pin.trim()) {
       showToast("error", "Username and 4-digit PIN are required.");
       return;
     }
-    if (serviceUserForm.pin.length !== 4 || !/^\d{4}$/.test(serviceUserForm.pin)) {
+    if (serviceUserForm.pin.trim().length !== 4 || !/^\d{4}$/.test(serviceUserForm.pin.trim())) {
       showToast("error", "PIN must be exactly 4 digits.");
       return;
     }
 
-    const serviceAdminUsers = [...(stagingData.serviceAdminUsers || [])];
+    const currentUsers = [...(stagingData.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers || [])];
+    const cleanUsername = serviceUserForm.username.trim().toLowerCase();
+    const cleanPin = serviceUserForm.pin.trim();
+
+    let updatedUsers: any[] = [];
 
     if (editingItemId) {
-      const idx = serviceAdminUsers.findIndex(u => u.id === editingItemId);
-      if (idx !== -1) {
-        serviceAdminUsers[idx] = { ...serviceUserForm, id: editingItemId };
-      }
+      updatedUsers = currentUsers.map(u => 
+        u.id === editingItemId 
+          ? { 
+              ...u, 
+              ...serviceUserForm, 
+              username: cleanUsername, 
+              pin: cleanPin,
+              status: serviceUserForm.status || "active"
+            } 
+          : u
+      );
     } else {
-      serviceAdminUsers.push({ ...serviceUserForm, id: "usr-" + Date.now() });
+      if (currentUsers.some(u => u.username.toLowerCase() === cleanUsername)) {
+        showToast("error", "A user with this username already exists! Choose another username.");
+        return;
+      }
+      const newUser = {
+        id: "usr-" + Date.now(),
+        name: serviceUserForm.name.trim() || "Service Admin",
+        username: cleanUsername,
+        pin: cleanPin,
+        role: serviceUserForm.role || "services_admin",
+        status: serviceUserForm.status || "active",
+        createdAt: new Date().toISOString().split("T")[0]
+      };
+      updatedUsers = [...currentUsers, newUser];
     }
 
-    setStagingData(prev => ({ ...prev, serviceAdminUsers }));
-    setServiceUserForm({ username: "", pin: "", name: "", role: "services_admin" });
+    setStagingData(prev => ({ ...prev, serviceAdminUsers: updatedUsers }));
+    try {
+      await set(ref(db, "portfolio/serviceAdminUsers"), updatedUsers);
+      showToast("success", editingItemId ? "Service Admin user updated and synced with Cloud." : "New Services Admin user created and synced with Cloud.");
+    } catch (err: any) {
+      showToast("error", "Saved to staging (Cloud sync failed: " + err.message + ")");
+    }
+    setServiceUserForm({ username: "", pin: "", name: "", role: "services_admin", status: "active" });
     setEditingItemId(null);
-    showToast("success", "Services Admin credentials saved.");
   };
 
-  const handleDeleteServiceUser = (id: string) => {
-    const serviceAdminUsers = (stagingData.serviceAdminUsers || []).filter(u => u.id !== id);
-    setStagingData(prev => ({ ...prev, serviceAdminUsers }));
-    showToast("success", "Services Admin user removed.");
+  const handleDeleteServiceUser = async (id: string) => {
+    const currentUsers = [...(stagingData.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers || [])];
+    if (currentUsers.length <= 1) {
+      showToast("error", "Cannot delete the only remaining admin user. At least one user must exist.");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to permanently delete this services admin user?")) return;
+    const updated = currentUsers.filter(u => u.id !== id);
+    setStagingData(prev => ({ ...prev, serviceAdminUsers: updated }));
+    try {
+      await set(ref(db, "portfolio/serviceAdminUsers"), updated);
+      showToast("success", "Services Admin user deleted.");
+    } catch (e: any) {
+      showToast("error", "Deleted in staging: " + e.message);
+    }
+  };
+
+  const handleToggleUserRestriction = async (id: string, currentStatus?: string) => {
+    const newStatus = currentStatus === "restricted" ? "active" : "restricted";
+    const currentUsers = [...(stagingData.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers || [])];
+    const updated = currentUsers.map(u => u.id === id ? { ...u, status: newStatus as any } : u);
+    setStagingData(prev => ({ ...prev, serviceAdminUsers: updated }));
+    try {
+      await set(ref(db, "portfolio/serviceAdminUsers"), updated);
+      showToast("success", `User ${newStatus === "restricted" ? "RESTRICTED 🛑" : "ACTIVATED ✅"} successfully.`);
+    } catch (e: any) {
+      showToast("error", "Status changed in staging.");
+    }
   };
 
   // Helper formatting for dynamic preview window checks
@@ -1396,203 +1451,245 @@ export default function Dashboard() {
           {/* DYNAMIC FORM SHELL CONTENT */}
           <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 backdrop-blur-md shadow-2xl space-y-6 text-xs">
             
-            {/* ---------------- SUGGESTIONS BOX SECTION ---------------- */}
-            {activeCmsSection === "suggestions" && (
+            {/* ---------------- SECTION: SERVICES ADMIN USERS & CREDENTIALS ---------------- */}
+            {activeCmsSection === "serviceAdminUsers" && (
               <div className="space-y-6">
-                <div className="border-b border-white/5 pb-2 flex justify-between items-center">
+                <div className="border-b border-white/5 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Suggestions & Queries Box</h3>
-                    <p className="text-gray-500 mt-1">Review suggestions and user feedback stored securely in your Firebase database.</p>
+                    <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide flex items-center gap-2">
+                      <ShieldCheck className="h-5 w-5 text-cyan-400" />
+                      <span>Services Admin Users & Access Controls</span>
+                    </h3>
+                    <p className="text-gray-400 mt-1 text-xs">
+                      Manage authorized login credentials (username and 4-digit PIN) for the dedicated <span className="text-cyan-300 font-mono font-bold">/adminservices</span> Services & Submissions Portal.
+                    </p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {unreadSugsCount > 0 && (
+                  <a
+                    href="./adminservices"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold uppercase tracking-wider transition-all"
+                  >
+                    <span>Open Services Portal</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+
+                {/* Form Card: Create / Edit User */}
+                <div className="p-5 bg-black/40 border border-cyan-500/30 rounded-2xl space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <h4 className="font-bold text-white uppercase tracking-wider flex items-center space-x-2 text-xs font-mono">
+                      <Users className="h-4 w-4 text-cyan-400" />
+                      <span>{editingItemId ? "✏️ Edit Services Admin Credentials" : "➕ Create New Services Admin User"}</span>
+                    </h4>
+                    {editingItemId && (
                       <button
-                        onClick={() => handleMarkAllRead("suggestions", suggestions)}
-                        className="px-3 py-1.5 bg-red-500/20 text-red-300 border border-red-500/40 rounded-xl hover:bg-red-500/30 transition-colors cursor-pointer flex items-center space-x-1.5 text-xs font-mono font-bold uppercase animate-pulse"
+                        onClick={() => {
+                          setEditingItemId(null);
+                          setServiceUserForm({ username: "", pin: "", name: "", role: "services_admin", status: "active" });
+                        }}
+                        className="text-[10px] font-mono text-gray-400 hover:text-white uppercase"
                       >
-                        <span>Mark All Read ({unreadSugsCount})</span>
+                        Cancel Editing
                       </button>
                     )}
-                    <button 
-                      onClick={fetchSuggestions}
-                      className="p-2 bg-white/5 rounded-xl text-gray-400 hover:text-white border border-white/10 transition-colors cursor-pointer flex items-center space-x-1.5"
-                      title="Refresh suggestions"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      <span className="text-[10px] font-mono font-bold uppercase">Refresh</span>
-                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-mono font-bold text-gray-400 uppercase text-[10px]">User Display Name / Label</label>
+                      <input
+                        type="text"
+                        value={serviceUserForm.name}
+                        onChange={(e) => setServiceUserForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="e.g. Primary Services Admin / Support"
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-mono font-bold text-cyan-400 uppercase text-[10px]">Username (Login ID) *</label>
+                      <input
+                        type="text"
+                        required
+                        value={serviceUserForm.username}
+                        onChange={(e) => setServiceUserForm(prev => ({ ...prev, username: e.target.value.toLowerCase() }))}
+                        placeholder="e.g. loginadmin or amit2026"
+                        className="w-full bg-black/60 border border-cyan-500/30 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500 font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-mono font-bold text-cyan-400 uppercase text-[10px]">4-Digit PIN Code (Password) *</label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={4}
+                        value={serviceUserForm.pin}
+                        onChange={(e) => setServiceUserForm(prev => ({ ...prev, pin: e.target.value.replace(/[^0-9]/g, '') }))}
+                        placeholder="4 digits e.g. 1860"
+                        className="w-full bg-black/60 border border-cyan-500/30 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500 font-mono tracking-widest"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-mono font-bold text-gray-400 uppercase text-[10px]">Administrative Role</label>
+                      <input
+                        type="text"
+                        value={serviceUserForm.role}
+                        onChange={(e) => setServiceUserForm(prev => ({ ...prev, role: e.target.value }))}
+                        placeholder="e.g. services_admin / support / manager"
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-mono font-bold text-gray-400 uppercase text-[10px]">Account Access Status</label>
+                      <select
+                        value={serviceUserForm.status || "active"}
+                        onChange={(e) => setServiceUserForm(prev => ({ ...prev, status: e.target.value as any }))}
+                        className="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
+                      >
+                        <option value="active">Active (Access Allowed)</option>
+                        <option value="restricted">Restricted (Login Blocked)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={handleSaveServiceUser}
+                        className="w-full py-2.5 px-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-bold font-mono uppercase tracking-wider text-xs shadow-lg shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center space-x-1.5"
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                        <span>{editingItemId ? "Update Credentials" : "Create Services User"}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {suggestions.length === 0 ? (
-                  <div className="py-12 text-center text-gray-500 font-mono">
-                    No suggestions or user feedback submitted yet.
+                {/* Directory List of Current Authorized Users */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-mono font-bold text-gray-400 uppercase text-xs tracking-wider">
+                      Current Authorized Services Users ({(stagingData.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers || []).length})
+                    </h4>
+                    <span className="text-[10px] text-gray-500 font-mono">
+                      Credentials are encrypted and synced in real-time
+                    </span>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {suggestions.map((item) => (
-                      <div key={item.id} className={`p-5 bg-black/40 border rounded-2xl space-y-3 relative group transition-all ${!item.read ? "border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.15)]" : "border-white/10"}`}>
-                        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-white/5 pb-2">
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <h4 className="text-sm font-bold text-white">{item.name}</h4>
-                              {!item.read && (
-                                <span className="px-2 py-0.5 rounded bg-red-500 text-white font-mono text-[9px] font-extrabold uppercase animate-pulse">
-                                  UNREAD
+
+                  <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/40 shadow-xl">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-white/5 text-gray-400 font-mono uppercase tracking-wider text-[10px] border-b border-white/10">
+                        <tr>
+                          <th className="py-3 px-4">User Label & Role</th>
+                          <th className="py-3 px-4">Username (Login ID)</th>
+                          <th className="py-3 px-4">4-Digit PIN Code</th>
+                          <th className="py-3 px-4">Login Access Status</th>
+                          <th className="py-3 px-4">Created Date</th>
+                          <th className="py-3 px-4 text-right">Actions & Controls</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {(stagingData.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers || []).map((u) => {
+                          const isRestricted = u.status === "restricted";
+                          const isPinRevealed = !!showPins[u.id];
+
+                          return (
+                            <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3.5 px-4">
+                                <div className="font-bold text-white">{u.name || "Services Administrator"}</div>
+                                <div className="text-[10px] font-mono text-gray-500 mt-0.5">{u.role || "services_admin"}</div>
+                              </td>
+
+                              <td className="py-3.5 px-4 font-mono font-bold text-cyan-400 select-all">
+                                {u.username}
+                              </td>
+
+                              <td className="py-3.5 px-4 font-mono">
+                                <div className="flex items-center space-x-2">
+                                  <span className={`px-2.5 py-1 rounded-md font-bold tracking-widest text-xs ${isPinRevealed ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40" : "bg-black/60 text-gray-400 border border-white/10"}`}>
+                                    {isPinRevealed ? u.pin : "••••"}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowPins(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
+                                    className="p-1 rounded text-gray-400 hover:text-white transition-colors cursor-pointer"
+                                    title={isPinRevealed ? "Hide 4-Digit PIN" : "Reveal 4-Digit PIN"}
+                                  >
+                                    {isPinRevealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                  </button>
+                                </div>
+                              </td>
+
+                              <td className="py-3.5 px-4">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                                  isRestricted 
+                                    ? "bg-red-500/15 text-red-400 border border-red-500/30 animate-pulse" 
+                                    : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                }`}>
+                                  {isRestricted ? "🛑 Restricted" : "✅ Active"}
                                 </span>
-                              )}
-                            </div>
-                            <span className="text-[10px] font-mono text-gray-500 block mt-0.5">
-                              Submitted: {new Date(item.timestamp).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2 flex-wrap">
-                            {!item.read && (
-                              <button
-                                type="button"
-                                onClick={() => handleMarkRead("suggestions", item.id)}
-                                className="px-2.5 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 text-[10px] font-mono font-bold uppercase transition-all cursor-pointer"
-                              >
-                                Mark Read
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleToggleEditAccess("suggestions", item.id, item.allowEdit || false)}
-                              className={`px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold uppercase transition-all flex items-center space-x-1 ${item.allowEdit ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30" : "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"}`}
-                              title="Toggle whether user can edit their submitted data via Check Status"
-                            >
-                              <span>{item.allowEdit ? "🔓 User Edit: ON" : "🔒 User Edit: OFF"}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditingSug(editingSug && editingSug.id === item.id ? null : { ...item })}
-                              className="px-2.5 py-1 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30 text-[10px] font-mono font-bold uppercase transition-all flex items-center space-x-1"
-                              title="Modify suggestion data"
-                            >
-                              <Edit3 className="h-3 w-3" />
-                              <span>{editingSug && editingSug.id === item.id ? "Cancel Edit" : "Modify Data"}</span>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteSuggestion(item.id)}
-                              className="p-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-black transition-colors cursor-pointer"
-                              title="Mark as solved / delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
+                              </td>
 
-                        {editingSug && editingSug.id === item.id ? (
-                          <div className="p-4 bg-purple-950/40 border border-purple-500/50 rounded-xl space-y-3 font-mono text-xs">
-                            <h5 className="font-bold text-purple-300 uppercase tracking-wider">✏️ Admin Modify Suggestion Data</h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-[10px] text-gray-400 uppercase block mb-1">Name</label>
-                                <input type="text" value={editingSug.name || ""} onChange={e => setEditingSug({...editingSug, name: e.target.value})} className="w-full bg-black/60 border border-purple-500/30 rounded p-2 text-white" />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-gray-400 uppercase block mb-1">Contact</label>
-                                <input type="text" value={editingSug.contact || ""} onChange={e => setEditingSug({...editingSug, contact: e.target.value})} className="w-full bg-black/60 border border-purple-500/30 rounded p-2 text-white" />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-gray-400 uppercase block mb-1">Address</label>
-                              <input type="text" value={editingSug.address || ""} onChange={e => setEditingSug({...editingSug, address: e.target.value})} className="w-full bg-black/60 border border-purple-500/30 rounded p-2 text-white" />
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-gray-400 uppercase block mb-1">Message</label>
-                              <textarea rows={3} value={editingSug.message || ""} onChange={e => setEditingSug({...editingSug, message: e.target.value})} className="w-full bg-black/60 border border-purple-500/30 rounded p-2 text-white" />
-                            </div>
-                            <div className="flex justify-end space-x-2 pt-2">
-                              <button type="button" onClick={() => setEditingSug(null)} className="px-3 py-1.5 rounded bg-gray-700 text-white text-xs">Cancel</button>
-                              <button type="button" onClick={() => handleUpdateSuggestionData(item.id, editingSug)} className="px-4 py-1.5 rounded bg-purple-500 text-white font-bold text-xs uppercase flex items-center space-x-1">
-                                <Save className="h-3 w-3" />
-                                <span>Save Changes</span>
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-                              <div className="space-y-1">
-                                <span className="text-gray-500 uppercase text-[9px] font-bold block">Contact Details:</span>
-                                <div className="flex items-center space-x-1 text-cyan-400">
-                                  <Mail className="h-3.5 w-3.5" />
-                                  <span className="select-all">{item.contact || "Not Provided"}</span>
+                              <td className="py-3.5 px-4 font-mono text-gray-400 text-[11px]">
+                                {u.createdAt || "2026-01-01"}
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right">
+                                <div className="flex items-center justify-end space-x-1.5">
+                                  {/* Toggle restriction */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleUserRestriction(u.id, u.status)}
+                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase transition-all cursor-pointer ${
+                                      isRestricted
+                                        ? "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
+                                        : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                    }`}
+                                    title={isRestricted ? "Enable user login access" : "Block/restrict this user from logging in"}
+                                  >
+                                    {isRestricted ? "Activate" : "Restrict"}
+                                  </button>
+
+                                  {/* Edit user */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingItemId(u.id);
+                                      setServiceUserForm({
+                                        name: u.name || "",
+                                        username: u.username,
+                                        pin: u.pin,
+                                        role: u.role || "services_admin",
+                                        status: u.status || "active"
+                                      });
+                                    }}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:text-cyan-400 hover:bg-white/5 border border-white/5 transition-colors cursor-pointer"
+                                    title="Edit credentials"
+                                  >
+                                    <Edit3 className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  {/* Delete user */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteServiceUser(u.id)}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 border border-white/5 transition-colors cursor-pointer"
+                                    title="Delete user"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
                                 </div>
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-gray-500 uppercase text-[9px] font-bold block">Physical Location:</span>
-                                <div className="flex items-center space-x-1 text-gray-300">
-                                  <MapPin className="h-3.5 w-3.5 text-purple-400" />
-                                  <span>{item.address || "Not Provided"}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
-                              <span className="text-gray-500 uppercase text-[9px] font-mono font-bold block">Suggestion/Message payload:</span>
-                              <p className="text-white text-xs whitespace-pre-wrap leading-relaxed">{item.message}</p>
-                            </div>
-                          </>
-                        )}
-
-                        {/* Admin Remarks & Status Control Block */}
-                        <div className="p-4 bg-purple-950/30 border border-purple-500/30 rounded-xl space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-[10px] font-mono font-bold uppercase text-purple-400">Tracking ID:</span>
-                              <span className="px-2 py-0.5 rounded font-mono font-extrabold text-xs bg-purple-500/20 text-purple-300 border border-purple-500/40 select-all">
-                                {item.id}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <label className="text-[10px] font-mono text-gray-400 uppercase">Status:</label>
-                              <select 
-                                defaultValue={item.status || "Received"} 
-                                onChange={(e) => {
-                                  const textarea = document.getElementById(`remarks-sug-${item.id}`) as HTMLTextAreaElement;
-                                  handleUpdateSuggestionStatus(item.id, e.target.value, textarea ? textarea.value : (item.remarks || ""));
-                                }}
-                                className="bg-black/60 border border-purple-500/40 text-purple-300 rounded-lg px-2.5 py-1 text-xs font-mono font-bold focus:outline-none"
-                              >
-                                <option value="Received">Received</option>
-                                <option value="In Review">In Review</option>
-                                <option value="Acknowledged">Acknowledged</option>
-                                <option value="Resolved">Resolved</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-mono text-gray-400 uppercase block">Admin Remarks for User:</label>
-                            <div className="flex gap-2">
-                              <textarea
-                                rows={2}
-                                defaultValue={item.remarks || ""}
-                                id={`remarks-sug-${item.id}`}
-                                placeholder="Enter official remarks for this suggestion ID..."
-                                className="flex-1 bg-black/60 border border-white/15 rounded-xl p-2 text-xs text-white placeholder-gray-500 focus:border-purple-500"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const textarea = document.getElementById(`remarks-sug-${item.id}`) as HTMLTextAreaElement;
-                                  handleUpdateSuggestionStatus(item.id, item.status || "Received", textarea ? textarea.value : "");
-                                }}
-                                className="px-4 py-2 bg-purple-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-purple-400 transition-colors flex items-center space-x-1 cursor-pointer self-end"
-                              >
-                                <Save className="h-3.5 w-3.5" />
-                                <span>Save</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                )}
+                </div>
               </div>
             )}
 

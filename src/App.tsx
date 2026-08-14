@@ -25,6 +25,7 @@ import BlogSection from "./components/BlogSection";
 import BlogReaderModal from "./components/BlogReaderModal";
 import ToolRedirectModal from "./components/ToolRedirectModal";
 import FormFillupModal from "./components/FormFillupModal";
+import NewsletterSignup from "./components/NewsletterSignup";
 
 export default function App() {
   // Theme & Language state
@@ -874,6 +875,11 @@ export default function App() {
           : "bg-slate-100 border-slate-200 text-slate-700"
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          {/* Newsletter Subscription Component */}
+          <div className="mb-12">
+            <NewsletterSignup lang={lang} />
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-white/5">
             {/* Column 1: Brand & Subtitle */}
