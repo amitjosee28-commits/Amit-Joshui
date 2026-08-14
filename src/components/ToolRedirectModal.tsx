@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Sliders, ExternalLink, X, Clock, Play } from "lucide-react";
+import { Sliders, ExternalLink, X, Clock } from "lucide-react";
 import { ToolItem } from "../utils/defaultData";
 
 interface ToolRedirectModalProps {
   isOpen: boolean;
   tool: ToolItem | null;
-  lang: "en" | "np";
   onClose: () => void;
 }
 
-export default function ToolRedirectModal({ isOpen, tool, lang, onClose }: ToolRedirectModalProps) {
+export default function ToolRedirectModal({ isOpen, tool, onClose }: ToolRedirectModalProps) {
   const [countdown, setCountdown] = useState(30);
 
   useEffect(() => {
@@ -37,9 +36,9 @@ export default function ToolRedirectModal({ isOpen, tool, lang, onClose }: ToolR
 
   if (!isOpen || !tool) return null;
 
-  const toolName = lang === "en" ? tool.nameEn : (tool.nameNp || tool.nameEn);
-  const toolDesc = lang === "en" ? tool.descriptionEn : (tool.descriptionNp || tool.descriptionEn);
-  const toolCat = lang === "en" ? tool.categoryEn : (tool.categoryNp || tool.categoryEn);
+  const toolName = tool.nameEn || "Utility Tool";
+  const toolDesc = tool.descriptionEn || "Official digital utility tool.";
+  const toolCat = tool.categoryEn || "Utility Tool Portal";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -59,7 +58,7 @@ export default function ToolRedirectModal({ isOpen, tool, lang, onClose }: ToolR
             <Sliders className="h-8 w-8 animate-pulse" />
           </div>
           <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-400 block">
-            {toolCat || "Utility Tool Portal"}
+            {toolCat}
           </span>
           <h2 className="text-2xl font-serif font-bold text-white">
             {toolName}
@@ -73,11 +72,7 @@ export default function ToolRedirectModal({ isOpen, tool, lang, onClose }: ToolR
         <div className="p-5 bg-black/50 border border-white/10 rounded-2xl text-center space-y-3">
           <div className="flex items-center justify-center space-x-2 text-amber-400 font-mono text-xs font-bold uppercase">
             <Clock className="h-4 w-4 animate-spin" />
-            <span>
-              {lang === "en" 
-                ? "Auto-Redirecting to External Tool"
-                : "उपकरणमा स्वतः रिडाइरेक्ट हुँदैछ"}
-            </span>
+            <span>Auto-Redirecting to External Tool</span>
           </div>
 
           <div className="text-4xl font-extrabold font-mono text-cyan-400 tracking-wider">
@@ -99,17 +94,17 @@ export default function ToolRedirectModal({ isOpen, tool, lang, onClose }: ToolR
             href={tool.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 inline-flex items-center justify-center space-x-2 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-black shadow-lg transition-all active:scale-95 cursor-pointer"
+            className="flex-1 inline-flex items-center justify-center space-x-2 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-black shadow-lg transition-all active:scale-95 cursor-pointer font-sans"
           >
-            <span>{lang === "en" ? "Open Tool Instantly Now" : "अहिले नै खोल्नुहोस्"}</span>
+            <span>Open Tool Instantly Now</span>
             <ExternalLink className="h-4 w-4" />
           </a>
 
           <button
             onClick={onClose}
-            className="px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer"
+            className="px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer font-sans"
           >
-            {lang === "en" ? "Stay on Portfolio" : "साइटमै बस्नुहोस्"}
+            Stay on Website
           </button>
         </div>
 

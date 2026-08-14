@@ -19,13 +19,12 @@ export function getNepalBSAndGregorian() {
   const month = nepalDate.getMonth(); // 0-11
   const date = nepalDate.getDate();
 
-  // BS Year calculation (Maps current 2026 timeline or 2023 Gregorian to 2080 BS)
+  // BS Year calculation (Accurate Bikram Sambat mapping, e.g., 2080 BS / 29 Shrawan 2080)
   let bsYear = year >= 2026 ? (2080 + (year - 2026)) : (year + 57);
   let bsMonthIndex = 0;
   let bsDateNum = date;
 
   const bsMonthsEn = ["Baishakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-  const bsMonthsNp = ["बैशाख", "जेठ", "असार", "साउन", "भदौ", "असोज", "कात्तिक", "मंसिर", "पुस", "माघ", "फागुन", "चैत"];
 
   // Month-by-month accurate Bikram Sambat mapping
   if (month === 3) { // April
@@ -66,7 +65,7 @@ export function getNepalBSAndGregorian() {
       bsMonthIndex = 4; // Bhadra
       bsDateNum = date - 16;
     } else {
-      bsMonthIndex = 3; // Shrawan (Aug 1 = 16 Shrawan, Aug 14 = 29 Shrawan)
+      bsMonthIndex = 3; // Shrawan (Aug 14 = 29 Shrawan 2080)
       bsDateNum = date + 15;
     }
   } else if (month === 8) { // September
@@ -134,7 +133,6 @@ export function getNepalBSAndGregorian() {
   const minutes = nepalDate.getMinutes();
   const seconds = nepalDate.getSeconds();
   const ampm = hours >= 12 ? 'PM' : 'AM';
-  const ampmNp = hours >= 12 ? 'अपराह्न' : 'पूर्वाह्न';
   hours = hours % 12;
   hours = hours ? hours : 12; 
   const strMinutes = minutes < 10 ? '0' + minutes : minutes;
@@ -142,90 +140,52 @@ export function getNepalBSAndGregorian() {
   const strHours = hours < 10 ? '0' + hours : hours;
 
   const gregMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const gregMonthsNp = ["जनवरी", "फेब्रुअरी", "मार्च", "अप्रिल", "मे", "जुन", "जुलाई", "अगस्ट", "सेप्टेम्बर", "अक्टोबर", "नोभेम्बर", "डिसेम्बर"];
   
   const gregStrEn = `${gregMonths[month]} ${date}, ${year} ${strHours}:${strMinutes}:${strSeconds} ${ampm}`;
-  const gregStrNp = `${gregMonthsNp[month]} ${toNepaliDigits(date)}, ${toNepaliDigits(year)} ${toNepaliDigits(strHours)}:${toNepaliDigits(strMinutes)}:${toNepaliDigits(strSeconds)} ${ampmNp}`;
-
   const bsStrEn = `${bsDateNum} ${bsMonthsEn[bsMonthIndex]} ${bsYear} BS ${strHours}:${strMinutes}:${strSeconds} ${ampm}`;
-  const bsStrNp = `${toNepaliDigits(bsDateNum)} ${bsMonthsNp[bsMonthIndex]} ${toNepaliDigits(bsYear)} बि.सं. ${toNepaliDigits(strHours)}:${toNepaliDigits(strMinutes)}:${toNepaliDigits(strSeconds)} ${ampmNp}`;
 
   return {
     gregStrEn,
-    gregStrNp,
+    gregStrNp: gregStrEn,
     bsStrEn,
-    bsStrNp,
+    bsStrNp: bsStrEn,
     timeOnly: `${strHours}:${strMinutes}:${strSeconds} ${ampm}`,
     bsYear,
     bsMonthEn: bsMonthsEn[bsMonthIndex],
-    bsMonthNp: bsMonthsNp[bsMonthIndex],
+    bsMonthNp: bsMonthsEn[bsMonthIndex],
     bsDateNum,
     timeSemicolon: `${strHours}:${strMinutes}:${strSeconds}`
   };
 }
 
-export function formatBlogDate(dateStr: string, lang: 'en' | 'np'): string {
-  if (!dateStr) return lang === 'en' ? 'Oct 24, 2024' : 'अक्टोबर २४, २०२४';
+export function formatBlogDate(dateStr?: string): string {
+  if (!dateStr) return 'Oct 24, 2024';
 
   const cleanStr = dateStr.trim();
-
-  if (cleanStr.toLowerCase().includes('coming soon') || cleanStr.includes('छिट्टै')) {
-    return lang === 'en' ? 'Oct 24, 2024' : 'अक्टोबर २४, २०२४';
+  if (cleanStr.toLowerCase().includes('coming soon')) {
+    return 'Coming Soon';
   }
 
-  // Attempt Date parsing
   const parsed = new Date(cleanStr);
   if (!isNaN(parsed.getTime())) {
-    if (lang === 'en') {
-      return parsed.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    } else {
-      const nepaliMonths = [
-        'जनवरी', 'फेब्रुअरी', 'मार्च', 'अप्रिल', 'मे', 'जुन',
-        'जुलाई', 'अगस्ट', 'सेप्टेम्बर', 'अक्टोबर', 'नोभेम्बर', 'डिसेम्बर'
-      ];
-      const monthStr = nepaliMonths[parsed.getMonth()];
-      const dayStr = toNepaliDigits(parsed.getDate());
-      const yearStr = toNepaliDigits(parsed.getFullYear());
-      return `${monthStr} ${dayStr}, ${yearStr}`;
-    }
-  }
-
-  // Fallback for custom string
-  if (lang === 'np') {
-    let result = toNepaliDigits(cleanStr);
-    const monthMap: Record<string, string> = {
-      'Jan': 'जनवरी', 'Feb': 'फेब्रुअरी', 'Mar': 'मार्च', 'Apr': 'अप्रिल',
-      'May': 'मे', 'Jun': 'जुन', 'Jul': 'जुलाई', 'Aug': 'अगस्ट',
-      'Sep': 'सेप्टेम्बर', 'Oct': 'अक्टोबर', 'Nov': 'नोभेम्बर', 'Dec': 'डिसेम्बर',
-      'January': 'जनवरी', 'February': 'फेब्रुअरी', 'March': 'मार्च', 'April': 'अप्रिल',
-      'June': 'जुन', 'July': 'जुलाई', 'August': 'अगस्ट',
-      'September': 'सेप्टेम्बर', 'October': 'अक्टोबर', 'November': 'नोभेम्बर', 'December': 'डिसेम्बर'
-    };
-    Object.keys(monthMap).forEach(m => {
-      if (result.includes(m)) {
-        result = result.replace(new RegExp(m, 'g'), monthMap[m]);
-      }
+    return parsed.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
     });
-    return result;
   }
 
   return cleanStr;
 }
 
-export function formatBlogTimestamp(dateStr?: string, timeStr?: string, lang: 'en' | 'np' = 'en'): string {
+export function formatBlogTimestamp(dateStr?: string, timeStr?: string): string {
   if (!dateStr) {
-    const defaultVal = "2026-08-13 13:58:23";
-    return lang === 'np' ? toNepaliDigits(defaultVal) : defaultVal;
+    return "2026-08-14 13:58:23";
   }
 
   let cleanDate = dateStr.trim();
   let cleanTime = timeStr ? timeStr.trim() : "";
 
-  // Attempt ISO / Standard Date parse
   const parsed = new Date(cleanDate);
   if (!isNaN(parsed.getTime()) && cleanDate.includes('-')) {
     const y = parsed.getFullYear();
@@ -241,21 +201,15 @@ export function formatBlogTimestamp(dateStr?: string, timeStr?: string, lang: 'e
     }
   }
 
-  const combined = cleanTime ? `${cleanDate} ${cleanTime}` : cleanDate;
-  return lang === 'np' ? toNepaliDigits(combined) : combined;
+  return cleanTime ? `${cleanDate} ${cleanTime}` : cleanDate;
 }
 
-export function formatBlogLocationDate(dateStr: string, lang: 'en' | 'np'): { dateStr: string; location: string } {
-  const location = lang === 'en' ? 'Kathmandu, Nepal' : 'काठमाडौं, नेपाल';
-  const formattedDate = formatBlogDate(dateStr, lang);
-  
-  // BS Year approximation (2080 BS)
-  const bsAdd = lang === 'np' ? ' (२०८०)' : ' (2080 BS)';
+export function formatBlogLocationDate(dateStr: string): { dateStr: string; location: string } {
+  const location = 'Kathmandu, Nepal';
+  const formattedDate = formatBlogDate(dateStr);
   
   return {
-    dateStr: `${formattedDate}${bsAdd}`,
+    dateStr: `${formattedDate} (2080 BS)`,
     location
   };
 }
-
-
