@@ -11,7 +11,7 @@ import { defaultPortfolioData, PortfolioData } from "./utils/defaultData";
 import { 
   Lock, Mail, Eye, EyeOff, Layout, Globe, Plus, Trash2, Edit3, 
   Save, Eye as PreviewIcon, ArrowLeft, RefreshCw, CheckCircle2, XCircle, 
-  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, MessageSquare, Inbox, Phone, FileText, ShieldCheck, AlertCircle, ExternalLink
+  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, MessageSquare, Inbox, Phone, FileText, ShieldCheck, AlertCircle, ExternalLink, DownloadCloud, Copy, Check, Filter, Search, Sparkles
 } from "lucide-react";
 import NetworkCanvas from "./components/NetworkCanvas";
 
@@ -363,6 +363,7 @@ export default function Dashboard() {
     if (user) {
       fetchSuggestions();
       fetchApplications();
+      fetchSubscribers();
     }
   }, [user, activeCmsSection]);
 
@@ -435,6 +436,12 @@ export default function Dashboard() {
     status: "active" as "active" | "restricted"
   });
   const [showPins, setShowPins] = useState<Record<string, boolean>>({});
+
+  // Newsletter Hub states
+  const [subscribers, setSubscribers] = useState<any[]>([]);
+  const [subscriberSearch, setSubscriberSearch] = useState("");
+  const [loadingSubscribers, setLoadingSubscribers] = useState(false);
+  const [copiedAllSubs, setCopiedAllSubs] = useState(false);
 
   // VIBGYOR Preset list for rich text mixer
   const vibgyorColors = [
@@ -1021,7 +1028,67 @@ export default function Dashboard() {
     showToast("success", "Native Blog Article saved.");
   };
 
+  const handleEditBlog = (blog: any) => {
+    setEditingItemId(blog.id);
+    setBlogForm({
+      slug: blog.slug || "",
+      titleEn: blog.titleEn || "",
+      titleNp: blog.titleNp || "",
+      mainPhoto: blog.mainPhoto || "",
+      additionalPhotos: blog.additionalPhotos || [],
+      additionalPhotoInput: "",
+      contentEn: blog.contentEn || "",
+      contentNp: blog.contentNp || "",
+      authorEn: blog.authorEn || "Amit Joshi",
+      authorNp: blog.authorNp || "अमित जोशी",
+      dateEn: blog.dateEn || new Date().toISOString().split("T")[0],
+      dateNp: blog.dateNp || "",
+      timeEn: blog.timeEn || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timeNp: blog.timeNp || ""
+    });
+    showToast("success", `Loaded "${blog.titleEn || 'Article'}" into editor.`);
+    const formElement = document.getElementById("blog-editor-form");
+    if (formElement) formElement.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleCancelBlogEdit = () => {
+    setEditingItemId(null);
+    setBlogForm({
+      slug: "",
+      titleEn: "",
+      titleNp: "",
+      mainPhoto: "",
+      additionalPhotos: [],
+      additionalPhotoInput: "",
+      contentEn: "",
+      contentNp: "",
+      authorEn: "Amit Joshi",
+      authorNp: "अमित जोशी",
+      dateEn: new Date().toISOString().split("T")[0],
+      dateNp: "",
+      timeEn: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timeNp: ""
+    });
+  };
+
+  const handleAddBlogGalleryPhoto = () => {
+    if (!blogForm.additionalPhotoInput.trim()) return;
+    setBlogForm(prev => ({
+      ...prev,
+      additionalPhotos: [...(prev.additionalPhotos || []), prev.additionalPhotoInput.trim()],
+      additionalPhotoInput: ""
+    }));
+  };
+
+  const handleRemoveBlogGalleryPhoto = (idx: number) => {
+    setBlogForm(prev => ({
+      ...prev,
+      additionalPhotos: (prev.additionalPhotos || []).filter((_, i) => i !== idx)
+    }));
+  };
+
   const handleDeleteBlog = (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this blog post?")) return;
     const blogList = (stagingData.blogs?.list || []).filter(b => b.id !== id);
     setStagingData(prev => ({
       ...prev,
@@ -1058,10 +1125,175 @@ export default function Dashboard() {
     showToast("success", "Custom Permalink saved.");
   };
 
+  const handleEditPermalink = (link: any) => {
+    setEditingItemId(link.id);
+    setPermalinkForm({
+      type: link.type || "page",
+      slug: link.slug || "",
+      targetId: link.targetId || "",
+      titleEn: link.titleEn || "",
+      titleNp: link.titleNp || ""
+    });
+    const formElement = document.getElementById("permalink-editor-form");
+    if (formElement) formElement.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleCancelPermalinkEdit = () => {
+    setEditingItemId(null);
+    setPermalinkForm({ type: "page", slug: "", targetId: "", titleEn: "", titleNp: "" });
+  };
+
   const handleDeletePermalink = (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this custom permalink?")) return;
     const customLinks = (stagingData.customLinks || []).filter(l => l.id !== id);
     setStagingData(prev => ({ ...prev, customLinks }));
     showToast("success", "Custom Permalink deleted.");
+  };
+
+  // Dynamic Sitemap Generator handlers
+  const generateSitemapXml = () => {
+    const baseUrl = "https://amitjoshi.info.np";
+    const today = new Date().toISOString().split("T")[0];
+    
+    const staticPages = [
+      { loc: `${baseUrl}/`, priority: "1.0", changefreq: "weekly" },
+      { loc: `${baseUrl}/blog`, priority: "0.9", changefreq: "daily" },
+      { loc: `${baseUrl}/services`, priority: "0.8", changefreq: "weekly" },
+      { loc: `${baseUrl}/tools`, priority: "0.8", changefreq: "weekly" },
+      { loc: `${baseUrl}/education`, priority: "0.7", changefreq: "monthly" },
+      { loc: `${baseUrl}/social-media`, priority: "0.7", changefreq: "monthly" },
+      { loc: `${baseUrl}/contact`, priority: "0.7", changefreq: "monthly" },
+      { loc: `${baseUrl}/status`, priority: "0.6", changefreq: "monthly" }
+    ];
+
+    const blogPages = (stagingData.blogs?.list || []).map((blog: any) => ({
+      loc: `${baseUrl}/blog/${blog.slug || blog.id}`,
+      lastmod: blog.dateEn || today,
+      priority: "0.8",
+      changefreq: "weekly"
+    }));
+
+    const permalinkPages = (stagingData.customLinks || []).map((link: any) => {
+      const cleanSlug = (link.slug || "").replace(/^\/+/, "");
+      return {
+        loc: `${baseUrl}/${cleanSlug}`,
+        lastmod: today,
+        priority: "0.7",
+        changefreq: "weekly"
+      };
+    });
+
+    const allUrls = [...staticPages, ...blogPages, ...permalinkPages];
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+    allUrls.forEach(u => {
+      xml += `  <url>\n`;
+      xml += `    <loc>${u.loc}</loc>\n`;
+      xml += `    <lastmod>${(u as any).lastmod || today}</lastmod>\n`;
+      xml += `    <changefreq>${u.changefreq}</changefreq>\n`;
+      xml += `    <priority>${u.priority}</priority>\n`;
+      xml += `  </url>\n`;
+    });
+    xml += `</urlset>`;
+
+    return xml;
+  };
+
+  const handleCopySitemap = () => {
+    const xml = generateSitemapXml();
+    navigator.clipboard.writeText(xml);
+    showToast("success", "Sitemap XML copied to clipboard!");
+  };
+
+  const handleDownloadSitemap = () => {
+    const xml = generateSitemapXml();
+    const blob = new Blob([xml], { type: "application/xml" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sitemap.xml";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("success", "sitemap.xml file downloaded!");
+  };
+
+  // Newsletter Subscribers handlers
+  const fetchSubscribers = async () => {
+    setLoadingSubscribers(true);
+    try {
+      let list: any[] = [];
+      const subSnap = await get(ref(db, "subscribers"));
+      if (subSnap.exists()) {
+        const data = subSnap.val();
+        list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+      }
+      const portSnap = await get(ref(db, "portfolio/subscribers"));
+      if (portSnap.exists()) {
+        const data = portSnap.val();
+        Object.keys(data).forEach(key => {
+          if (!list.some(s => s.email?.toLowerCase() === data[key]?.email?.toLowerCase())) {
+            list.push({ id: key, ...data[key] });
+          }
+        });
+      }
+      list.sort((a, b) => new Date(b.subscribedAt || b.timestamp || 0).getTime() - new Date(a.subscribedAt || a.timestamp || 0).getTime());
+      setSubscribers(list);
+    } catch (err) {
+      console.error("Failed to fetch subscribers:", err);
+    } finally {
+      setLoadingSubscribers(false);
+    }
+  };
+
+  const handleDeleteSubscriber = async (id: string, subEmail: string) => {
+    if (!window.confirm(`Are you sure you want to remove subscriber "${subEmail}"?`)) return;
+    try {
+      await set(ref(db, `subscribers/${id}`), null);
+      await set(ref(db, `portfolio/subscribers/${id}`), null);
+      showToast("success", `Subscriber "${subEmail}" deleted.`);
+      fetchSubscribers();
+    } catch (e: any) {
+      showToast("error", "Failed to delete subscriber: " + e.message);
+    }
+  };
+
+  const handleExportSubscribersCSV = () => {
+    if (subscribers.length === 0) {
+      showToast("error", "No subscribers available to export.");
+      return;
+    }
+    const headers = ["ID", "Name", "Email", "Subscribed Date", "Status"];
+    const rows = subscribers.map(s => [
+      `"${s.id || ''}"`,
+      `"${(s.name || '').replace(/"/g, '""')}"`,
+      `"${(s.email || '').replace(/"/g, '""')}"`,
+      `"${s.subscribedAt || s.timestamp || ''}"`,
+      `"${s.status || 'Active'}"`
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `subscribers_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("success", "Newsletter subscribers exported as CSV.");
+  };
+
+  const handleCopyAllSubscriberEmails = () => {
+    const emails = subscribers.map(s => s.email).filter(Boolean).join(", ");
+    if (!emails) {
+      showToast("error", "No emails to copy.");
+      return;
+    }
+    navigator.clipboard.writeText(emails);
+    setCopiedAllSubs(true);
+    setTimeout(() => setCopiedAllSubs(false), 3000);
+    showToast("success", `Copied ${subscribers.length} subscriber emails to clipboard!`);
   };
 
   // Service admin user credentials manager handlers
@@ -1375,6 +1607,8 @@ export default function Dashboard() {
           {[
             { id: "blogs", label: "Dynamic Blog Manager 📝", icon: BookOpen },
             { id: "customLinks", label: "Custom Permalinks 🔗", icon: ExternalLink },
+            { id: "sitemap", label: "Dynamic Sitemap XML 🗺️", icon: Globe },
+            { id: "newsletter", label: "Newsletter Subscribers 📬", icon: Mail },
             { id: "serviceAdminUsers", label: "Services Admin Users 🛡️", icon: Users },
             { id: "header", label: "Favicons & Branding", icon: Layout },
             { id: "biography", label: "Homepage & Biographies", icon: Users },
@@ -1450,6 +1684,860 @@ export default function Dashboard() {
 
           {/* DYNAMIC FORM SHELL CONTENT */}
           <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 backdrop-blur-md shadow-2xl space-y-6 text-xs">
+            
+            {/* ---------------- SECTION: DYNAMIC BLOG MANAGER ---------------- */}
+            {activeCmsSection === "blogs" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide flex items-center gap-2">
+                      <BookOpen className="h-5 w-5 text-cyan-400" />
+                      <span>Dynamic Blog & Publications Manager</span>
+                    </h3>
+                    <p className="text-gray-400 mt-1 text-xs">
+                      Create, edit, format, and publish responsive blog articles. Posts are stored dynamically in Firebase and generate unique clean URL permalinks.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <a
+                      href="./blog"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-mono font-bold uppercase tracking-wider transition-all"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>Public Blog Archive</span>
+                    </a>
+                    {editingItemId && (
+                      <button
+                        type="button"
+                        onClick={handleCancelBlogEdit}
+                        className="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 border border-white/10 text-xs font-mono font-bold uppercase"
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Form Card: Create / Edit Blog Article */}
+                <div id="blog-editor-form" className="p-5 bg-black/40 border border-cyan-500/30 rounded-2xl space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <h4 className="font-bold text-white uppercase tracking-wider flex items-center space-x-2 text-xs font-mono">
+                      <BookOpen className="h-4 w-4 text-cyan-400" />
+                      <span>{editingItemId ? `✏️ Editing Post (ID: ${editingItemId})` : "➕ Create New Blog Post"}</span>
+                    </h4>
+                    {editingItemId && (
+                      <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono text-[10px] font-bold">
+                        MODIFICATION MODE
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
+                        Article Title ({activeLangTab.toUpperCase()}) <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={activeLangTab === "en" ? blogForm.titleEn : blogForm.titleNp}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (activeLangTab === "en") {
+                            setBlogForm(prev => ({
+                              ...prev,
+                              titleEn: val,
+                              slug: prev.slug || val.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+                            }));
+                          } else {
+                            setBlogForm(prev => ({ ...prev, titleNp: val }));
+                          }
+                        }}
+                        placeholder={activeLangTab === "en" ? "e.g. Modern Web Architecture & AI Engineering" : "लेखको शीर्षक प्रविष्ट गर्नुहोस्..."}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500 font-sans text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
+                        URL Slug / Permalink <span className="text-red-400">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-gray-500 font-mono text-xs">/blog/</span>
+                        <input
+                          type="text"
+                          value={blogForm.slug}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, "") }))}
+                          placeholder="article-slug-url"
+                          className="w-full bg-black/50 border border-white/10 rounded-xl pl-16 pr-3 py-2 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-mono">
+                        Preview: https://amitjoshi.info.np/blog/{blogForm.slug || "slug"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
+                        Author Name ({activeLangTab.toUpperCase()})
+                      </label>
+                      <input
+                        type="text"
+                        value={activeLangTab === "en" ? blogForm.authorEn : blogForm.authorNp}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (activeLangTab === "en") setBlogForm(prev => ({ ...prev, authorEn: val }));
+                          else setBlogForm(prev => ({ ...prev, authorNp: val }));
+                        }}
+                        placeholder={activeLangTab === "en" ? "Amit Joshi" : "अमित जोशी"}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
+                        Publish Date ({activeLangTab.toUpperCase()})
+                      </label>
+                      <input
+                        type="text"
+                        value={activeLangTab === "en" ? blogForm.dateEn : blogForm.dateNp}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (activeLangTab === "en") setBlogForm(prev => ({ ...prev, dateEn: val }));
+                          else setBlogForm(prev => ({ ...prev, dateNp: val }));
+                        }}
+                        placeholder={activeLangTab === "en" ? "YYYY-MM-DD (e.g. 2026-03-29)" : "२०८२-१२-१५"}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
+                        Publish Time ({activeLangTab.toUpperCase()})
+                      </label>
+                      <input
+                        type="text"
+                        value={activeLangTab === "en" ? blogForm.timeEn : blogForm.timeNp}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (activeLangTab === "en") setBlogForm(prev => ({ ...prev, timeEn: val }));
+                          else setBlogForm(prev => ({ ...prev, timeNp: val }));
+                        }}
+                        placeholder={activeLangTab === "en" ? "e.g. 10:30 AM" : "बिहान १०:३०"}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    {/* Featured Main Photo */}
+                    <div className="space-y-2 md:col-span-2 bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider flex items-center justify-between">
+                        <span>Featured Main Image</span>
+                        <span className="text-gray-500 font-mono text-[10px]">URL or direct upload</span>
+                      </label>
+                      <div className="flex flex-col sm:flex-row items-center gap-3">
+                        <input
+                          type="text"
+                          value={blogForm.mainPhoto}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, mainPhoto: e.target.value }))}
+                          placeholder="https://images.unsplash.com/... or Base64 Data URL"
+                          className="flex-1 w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                        />
+                        <label className="cursor-pointer inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-xs font-mono font-bold shrink-0 transition-all">
+                          <span>Upload File</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  setBlogForm(prev => ({ ...prev, mainPhoto: reader.result as string }));
+                                  showToast("success", "Featured photo loaded.");
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                      {blogForm.mainPhoto && (
+                        <div className="relative inline-block mt-2">
+                          <img
+                            src={blogForm.mainPhoto}
+                            alt="Featured Preview"
+                            className="h-20 w-32 object-cover rounded-lg border border-cyan-500/40 shadow"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setBlogForm(prev => ({ ...prev, mainPhoto: "" }))}
+                            className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-700"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Additional Photo Gallery */}
+                    <div className="space-y-2 md:col-span-2 bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider flex items-center justify-between">
+                        <span>Multi-Image Gallery Attachments ({blogForm.additionalPhotos?.length || 0})</span>
+                        <span className="text-gray-500 font-mono text-[10px]">Add supplementary photos for article viewer</span>
+                      </label>
+                      <div className="flex flex-col sm:flex-row items-center gap-3">
+                        <input
+                          type="text"
+                          value={blogForm.additionalPhotoInput}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, additionalPhotoInput: e.target.value }))}
+                          placeholder="Additional Photo URL..."
+                          className="flex-1 w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddBlogGalleryPhoto}
+                          className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold shrink-0"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          <span>Add to Gallery</span>
+                        </button>
+                        <label className="cursor-pointer inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-xs font-mono font-bold shrink-0 transition-all">
+                          <span>Upload File</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  setBlogForm(prev => ({
+                                    ...prev,
+                                    additionalPhotos: [...(prev.additionalPhotos || []), reader.result as string]
+                                  }));
+                                  showToast("success", "Gallery photo added.");
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                      {blogForm.additionalPhotos && blogForm.additionalPhotos.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {blogForm.additionalPhotos.map((photoUrl, idx) => (
+                            <div key={idx} className="relative group">
+                              <img
+                                src={photoUrl}
+                                alt={`Gallery ${idx + 1}`}
+                                className="h-16 w-24 object-cover rounded-lg border border-white/10 shadow group-hover:border-cyan-400 transition-all"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBlogGalleryPhoto(idx)}
+                                className="absolute -top-1.5 -right-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full h-4 w-4 flex items-center justify-center text-[9px] font-bold shadow"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rich Text Body Content */}
+                    <div className="space-y-2 md:col-span-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
+                          Article Body Content ({activeLangTab.toUpperCase()}) <span className="text-red-400">*</span>
+                        </label>
+                        <div className="flex items-center space-x-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const field = activeLangTab === "en" ? "contentEn" : "contentNp";
+                              setBlogForm(prev => ({ ...prev, [field]: prev[field] + "\n\n**Bold Text**" }));
+                            }}
+                            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-gray-300 text-[10px] font-mono font-bold"
+                          >
+                            B
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const field = activeLangTab === "en" ? "contentEn" : "contentNp";
+                              setBlogForm(prev => ({ ...prev, [field]: prev[field] + "\n\n*Italic Text*" }));
+                            }}
+                            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-gray-300 text-[10px] font-mono font-bold italic"
+                          >
+                            I
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const field = activeLangTab === "en" ? "contentEn" : "contentNp";
+                              setBlogForm(prev => ({ ...prev, [field]: prev[field] + "\n\n### Subheading Title" }));
+                            }}
+                            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-gray-300 text-[10px] font-mono font-bold"
+                          >
+                            H3
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const field = activeLangTab === "en" ? "contentEn" : "contentNp";
+                              setBlogForm(prev => ({ ...prev, [field]: prev[field] + "\n\n- Key bullet point 1\n- Key bullet point 2" }));
+                            }}
+                            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-gray-300 text-[10px] font-mono font-bold"
+                          >
+                            List
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const field = activeLangTab === "en" ? "contentEn" : "contentNp";
+                              setBlogForm(prev => ({ ...prev, [field]: prev[field] + "\n\n> Important quote or callout block" }));
+                            }}
+                            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-gray-300 text-[10px] font-mono font-bold"
+                          >
+                            Quote
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        rows={10}
+                        value={activeLangTab === "en" ? blogForm.contentEn : blogForm.contentNp}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (activeLangTab === "en") setBlogForm(prev => ({ ...prev, contentEn: val }));
+                          else setBlogForm(prev => ({ ...prev, contentNp: val }));
+                        }}
+                        placeholder={activeLangTab === "en" ? "Write or paste article paragraphs, markdown formatting, insights, code snippets..." : "लेखको विस्तृत विवरण लेख्नुहोस्..."}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500 font-sans text-xs leading-relaxed"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end space-x-3 pt-3 border-t border-white/5">
+                    {editingItemId && (
+                      <button
+                        type="button"
+                        onClick={handleCancelBlogEdit}
+                        className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-mono text-xs font-bold uppercase transition-all"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSaveBlog}
+                      className="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-cyan-500/25 transition-all"
+                    >
+                      <Save className="h-4 w-4" />
+                      <span>{editingItemId ? "Update Blog Article" : "Save & Publish Article"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Table / List of Existing Blog Articles */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-white uppercase tracking-wider text-xs font-mono flex items-center space-x-2">
+                      <span>Published Blog Articles</span>
+                      <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold">
+                        {(stagingData.blogs?.list || []).length} Posts
+                      </span>
+                    </h4>
+                  </div>
+
+                  {(stagingData.blogs?.list || []).length === 0 ? (
+                    <div className="text-center py-10 bg-black/20 rounded-2xl border border-white/5 text-gray-500">
+                      <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-40 text-cyan-400" />
+                      <p className="text-xs font-mono">No blog articles published yet. Fill out the form above to add your first article.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(stagingData.blogs?.list || []).map((blog: any) => (
+                        <div
+                          key={blog.id}
+                          className="bg-black/40 border border-white/10 hover:border-cyan-500/40 rounded-2xl p-4 space-y-3 transition-all group relative overflow-hidden"
+                        >
+                          <div className="flex items-start gap-3">
+                            {blog.mainPhoto ? (
+                              <img
+                                src={blog.mainPhoto}
+                                alt={blog.titleEn}
+                                className="h-16 w-24 object-cover rounded-xl border border-white/10 shrink-0"
+                              />
+                            ) : (
+                              <div className="h-16 w-24 rounded-xl bg-cyan-950/40 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                                <BookOpen className="h-6 w-6 opacity-60" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 font-mono text-[9px] font-bold border border-cyan-500/20">
+                                  /blog/{blog.slug || blog.id}
+                                </span>
+                                {blog.additionalPhotos && blog.additionalPhotos.length > 0 && (
+                                  <span className="text-[9px] font-mono text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
+                                    +{blog.additionalPhotos.length} photos
+                                  </span>
+                                )}
+                              </div>
+                              <h5 className="font-bold text-white text-sm line-clamp-1 mt-1 font-sans group-hover:text-cyan-300 transition-colors">
+                                {blog.titleEn || blog.titleNp}
+                              </h5>
+                              <p className="text-gray-400 text-[10px] font-mono mt-0.5">
+                                By {blog.authorEn || blog.authorNp || "Amit Joshi"} • {blog.dateEn || "Recent"} {blog.timeEn ? `(${blog.timeEn})` : ""}
+                              </p>
+                            </div>
+                          </div>
+
+                          <p className="text-gray-400 text-xs line-clamp-2 leading-relaxed">
+                            {blog.contentEn || blog.contentNp}
+                          </p>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                            <a
+                              href={`./blog?blog=${blog.slug || blog.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-cyan-400 hover:text-cyan-300 font-mono text-[10px] font-bold inline-flex items-center space-x-1"
+                            >
+                              <span>Preview</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+
+                            <div className="flex items-center space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => handleEditBlog(blog)}
+                                className="inline-flex items-center space-x-1 px-3 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-mono font-bold transition-all"
+                              >
+                                <Edit3 className="h-3 w-3" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBlog(blog.id)}
+                                className="inline-flex items-center space-x-1 px-3 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-mono font-bold transition-all"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- SECTION: CUSTOM PERMALINKS & SLUGS ---------------- */}
+            {activeCmsSection === "customLinks" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide flex items-center gap-2">
+                      <ExternalLink className="h-5 w-5 text-cyan-400" />
+                      <span>Custom Permalinks & Clean Routing Engine</span>
+                    </h3>
+                    <p className="text-gray-400 mt-1 text-xs">
+                      Define custom vanity slugs (e.g., <span className="text-cyan-300 font-mono">/bio</span>, <span className="text-cyan-300 font-mono">/contact</span>, <span className="text-cyan-300 font-mono">/tools</span>) to route directly to page sections, utilities, dynamic forms, or articles.
+                    </p>
+                  </div>
+                  {editingItemId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelPermalinkEdit}
+                      className="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-mono text-xs font-bold uppercase"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                </div>
+
+                {/* Form Card: Create / Edit Permalink */}
+                <div id="permalink-editor-form" className="p-5 bg-black/40 border border-cyan-500/30 rounded-2xl space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <h4 className="font-bold text-white uppercase tracking-wider flex items-center space-x-2 text-xs font-mono">
+                      <ExternalLink className="h-4 w-4 text-cyan-400" />
+                      <span>{editingItemId ? `✏️ Edit Custom Permalink (ID: ${editingItemId})` : "➕ Register New Custom Permalink"}</span>
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
+                        Link Type
+                      </label>
+                      <select
+                        value={permalinkForm.type}
+                        onChange={(e) => setPermalinkForm(prev => ({ ...prev, type: e.target.value as any }))}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="page">Page Section Anchor (e.g. #tools, #contact)</option>
+                        <option value="tool">Utility Tool (e.g. nepali-date, calendar)</option>
+                        <option value="form">Dynamic Form Modal</option>
+                        <option value="blog">Blog Article Slug</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
+                        Custom Slug (URL Path) <span className="text-red-400">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-gray-500 font-mono text-xs">/</span>
+                        <input
+                          type="text"
+                          value={permalinkForm.slug}
+                          onChange={(e) => setPermalinkForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, "") }))}
+                          placeholder="my-custom-slug"
+                          className="w-full bg-black/50 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-mono">
+                        Direct URL: https://amitjoshi.info.np/{permalinkForm.slug || "slug"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
+                        Target Section or Item ID <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={permalinkForm.targetId}
+                        onChange={(e) => setPermalinkForm(prev => ({ ...prev, targetId: e.target.value }))}
+                        placeholder="e.g. tools-section, initiatives-section, contact-section"
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
+                        Display Label / Title ({activeLangTab.toUpperCase()})
+                      </label>
+                      <input
+                        type="text"
+                        value={activeLangTab === "en" ? permalinkForm.titleEn : permalinkForm.titleNp}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (activeLangTab === "en") setPermalinkForm(prev => ({ ...prev, titleEn: val }));
+                          else setPermalinkForm(prev => ({ ...prev, titleNp: val }));
+                        }}
+                        placeholder={activeLangTab === "en" ? "e.g. Direct Tool Deck Access" : "सिधा लिंक"}
+                        className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white font-sans text-xs focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end space-x-3 pt-3 border-t border-white/5">
+                    {editingItemId && (
+                      <button
+                        type="button"
+                        onClick={handleCancelPermalinkEdit}
+                        className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-mono text-xs font-bold uppercase"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSavePermalink}
+                      className="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-cyan-500/25"
+                    >
+                      <Save className="h-4 w-4" />
+                      <span>{editingItemId ? "Update Permalink" : "Save Custom Permalink"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Table of Existing Permalinks */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-white uppercase tracking-wider text-xs font-mono flex items-center space-x-2">
+                      <span>Configured Permalinks</span>
+                      <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold">
+                        {(stagingData.customLinks || []).length} Mappings
+                      </span>
+                    </h4>
+                  </div>
+
+                  {(stagingData.customLinks || []).length === 0 ? (
+                    <div className="text-center py-8 bg-black/20 rounded-2xl border border-white/5 text-gray-500">
+                      <ExternalLink className="h-8 w-8 mx-auto mb-2 opacity-40 text-cyan-400" />
+                      <p className="text-xs font-mono">No custom permalinks created yet. Register one in the form above.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left font-mono text-xs">
+                        <thead>
+                          <tr className="border-b border-white/10 text-gray-400 text-[10px] uppercase tracking-wider">
+                            <th className="py-2.5 px-3">Type</th>
+                            <th className="py-2.5 px-3">Public Vanity URL</th>
+                            <th className="py-2.5 px-3">Target ID</th>
+                            <th className="py-2.5 px-3">Label</th>
+                            <th className="py-2.5 px-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {(stagingData.customLinks || []).map((link: any) => (
+                            <tr key={link.id} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3 px-3">
+                                <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-bold uppercase">
+                                  {link.type || "page"}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3">
+                                <a
+                                  href={`./${link.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-cyan-300 hover:text-cyan-200 underline font-bold"
+                                >
+                                  /{link.slug}
+                                </a>
+                              </td>
+                              <td className="py-3 px-3 text-gray-400">
+                                {link.targetId}
+                              </td>
+                              <td className="py-3 px-3 text-white font-sans">
+                                {link.titleEn || link.titleNp || "-"}
+                              </td>
+                              <td className="py-3 px-3 text-right space-x-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditPermalink(link)}
+                                  className="px-2.5 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePermalink(link.id)}
+                                  className="px-2.5 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-bold"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- SECTION: DYNAMIC SITEMAP GENERATOR ---------------- */}
+            {activeCmsSection === "sitemap" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide flex items-center gap-2">
+                      <Globe className="h-5 w-5 text-cyan-400" />
+                      <span>Dynamic XML Sitemap Generator (sitemap.xml)</span>
+                    </h3>
+                    <p className="text-gray-400 mt-1 text-xs">
+                      Live XML index of all canonical routes, published blog articles, utility tools, and custom vanity permalinks for Google & Bing web crawlers.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={handleCopySitemap}
+                      className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-mono font-bold uppercase tracking-wider transition-all"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Copy XML</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownloadSitemap}
+                      className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black text-xs font-mono font-bold uppercase tracking-wider shadow-lg shadow-cyan-500/25 transition-all"
+                    >
+                      <DownloadCloud className="h-3.5 w-3.5" />
+                      <span>Download sitemap.xml</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sitemap Stats Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-xl bg-black/40 border border-cyan-500/20">
+                    <span className="text-[10px] text-gray-400 uppercase font-mono font-bold">Total URLs Indexed</span>
+                    <p className="text-2xl font-bold text-cyan-300 font-mono mt-1">
+                      {8 + (stagingData.blogs?.list || []).length + (stagingData.customLinks || []).length}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-black/40 border border-purple-500/20">
+                    <span className="text-[10px] text-gray-400 uppercase font-mono font-bold">Static Core Routes</span>
+                    <p className="text-2xl font-bold text-purple-300 font-mono mt-1">8</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-black/40 border border-blue-500/20">
+                    <span className="text-[10px] text-gray-400 uppercase font-mono font-bold">Blog Articles</span>
+                    <p className="text-2xl font-bold text-blue-300 font-mono mt-1">
+                      {(stagingData.blogs?.list || []).length}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-black/40 border border-emerald-500/20">
+                    <span className="text-[10px] text-gray-400 uppercase font-mono font-bold">Custom Vanity Links</span>
+                    <p className="text-2xl font-bold text-emerald-300 font-mono mt-1">
+                      {(stagingData.customLinks || []).length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* XML Code Output Box */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider font-mono">
+                      Generated sitemap.xml Preview
+                    </label>
+                    <span className="text-[10px] text-gray-500 font-mono">UTF-8 / XML 0.9 Protocol</span>
+                  </div>
+                  <textarea
+                    readOnly
+                    rows={14}
+                    value={generateSitemapXml()}
+                    className="w-full bg-black/80 border border-white/10 rounded-xl p-4 text-cyan-300 font-mono text-[11px] leading-relaxed select-all focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- SECTION: NEWSLETTER SUBSCRIBERS ---------------- */}
+            {activeCmsSection === "newsletter" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide flex items-center gap-2">
+                      <Mail className="h-5 w-5 text-cyan-400" />
+                      <span>Newsletter Subscribers Hub</span>
+                    </h3>
+                    <p className="text-gray-400 mt-1 text-xs">
+                      View, search, filter, copy email distributions, and export verified newsletter subscribers captured via the website.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={fetchSubscribers}
+                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 text-xs font-mono font-bold uppercase transition-all"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${loadingSubscribers ? "animate-spin text-cyan-400" : ""}`} />
+                      <span>Refresh</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyAllSubscriberEmails}
+                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-mono font-bold uppercase transition-all"
+                    >
+                      {copiedAllSubs ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                      <span>{copiedAllSubs ? "Copied All!" : "Copy All Emails"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExportSubscribersCSV}
+                      className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black text-xs font-mono font-bold uppercase tracking-wider shadow-lg shadow-emerald-500/25 transition-all"
+                    >
+                      <DownloadCloud className="h-3.5 w-3.5" />
+                      <span>Export CSV</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <div className="relative flex-1 w-full">
+                    <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-500" />
+                    <input
+                      type="text"
+                      value={subscriberSearch}
+                      onChange={(e) => setSubscriberSearch(e.target.value)}
+                      placeholder="Search subscriber by email or name..."
+                      className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <span className="text-gray-400 font-mono text-xs whitespace-nowrap">
+                    Total: <strong className="text-cyan-300">{subscribers.length}</strong> Subscribers
+                  </span>
+                </div>
+
+                {/* Subscribers Table */}
+                {subscribers.length === 0 ? (
+                  <div className="text-center py-12 bg-black/20 rounded-2xl border border-white/5 text-gray-500">
+                    <Mail className="h-8 w-8 mx-auto mb-2 opacity-40 text-cyan-400" />
+                    <p className="text-xs font-mono">No subscribers recorded in Firebase yet.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left font-mono text-xs">
+                      <thead>
+                        <tr className="border-b border-white/10 text-gray-400 text-[10px] uppercase tracking-wider">
+                          <th className="py-2.5 px-3">#</th>
+                          <th className="py-2.5 px-3">Subscriber Name</th>
+                          <th className="py-2.5 px-3">Email Address</th>
+                          <th className="py-2.5 px-3">Subscribed Date</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {subscribers
+                          .filter(s => {
+                            if (!subscriberSearch.trim()) return true;
+                            const query = subscriberSearch.toLowerCase();
+                            return (
+                              (s.email || "").toLowerCase().includes(query) ||
+                              (s.name || "").toLowerCase().includes(query)
+                            );
+                          })
+                          .map((sub, idx) => (
+                            <tr key={sub.id || idx} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3 px-3 text-gray-500">{idx + 1}</td>
+                              <td className="py-3 px-3 text-white font-sans font-bold">
+                                {sub.name || "Community Member"}
+                              </td>
+                              <td className="py-3 px-3 text-cyan-300 font-bold">
+                                <a href={`mailto:${sub.email}`} className="hover:underline">
+                                  {sub.email}
+                                </a>
+                              </td>
+                              <td className="py-3 px-3 text-gray-400 text-[11px]">
+                                {sub.subscribedAt || sub.timestamp || "N/A"}
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                                  {sub.status || "Active"}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSubscriber(sub.id, sub.email)}
+                                  className="px-2.5 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-bold transition-all"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* ---------------- SECTION: SERVICES ADMIN USERS & CREDENTIALS ---------------- */}
             {activeCmsSection === "serviceAdminUsers" && (
