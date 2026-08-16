@@ -7,39 +7,61 @@
       ".write": "auth != null"
     },
     "suggestions": {
-      // Only authenticated admins can read the suggestions collection or perform bulk operations
       ".read": "auth != null",
       ".write": "auth != null",
-      
       "$suggestion_id": {
-        // Anyone can submit a new suggestion (create-only). Overwriting or deleting existing suggestions is blocked for non-admins.
         ".write": "!data.exists() && newData.exists()",
-        
-        // Ensure data integrity of the suggestion payload
         ".validate": "newData.hasChildren(['name', 'message', 'timestamp']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('message').isString() && newData.child('message').val().length > 0 && newData.child('timestamp').isString()"
       }
     },
     "service_applications": {
-      // Only authenticated admins can read applications list or perform bulk operations
       ".read": "auth != null",
       ".write": "auth != null",
-      
       "$app_id": {
-        // Anyone can submit a new service application (create-only). Users cannot view, alter, or delete other submissions.
+        ".read": "true",
         ".write": "!data.exists() && newData.exists()",
-        
-        // Enforce strong schema validation matching the application form requirements
-        ".validate": "newData.hasChildren(['serviceId', 'serviceTitle', 'name', 'contact', 'email', 'timestamp']) && newData.child('serviceId').isString() && newData.child('serviceTitle').isString() && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('contact').isString() && newData.child('contact').val().matches(/^((\\+?977)?\\s?9\\d{9})$/) && newData.child('email').isString() && newData.child('email').val().matches(/^[A-Za-z0-9._%+-]+@gmail\\.[Cc][Oo][Mm]$/) && newData.child('timestamp').isString()"
+        ".validate": "newData.hasChildren(['serviceId', 'serviceTitle', 'name', 'contact', 'email', 'timestamp']) && newData.child('serviceId').isString() && newData.child('serviceTitle').isString() && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('contact').isString() && newData.child('email').isString() && newData.child('timestamp').isString()"
+      }
+    },
+    "service_submissions": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$submission_id": {
+        ".read": "true",
+        ".write": "!data.exists() && newData.exists()"
+      }
+    },
+    "invoices": {
+      ".read": "true",
+      ".write": "auth != null",
+      "$invoice_id": {
+        ".read": "true",
+        ".write": "!data.exists() && newData.exists()"
+      }
+    },
+    "newsletter_subscribers": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$subscriber_id": {
+        ".write": "!data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['email', 'subscribedAt']) && newData.child('email').isString() && newData.child('subscribedAt').isString()"
+      }
+    },
+    "subscribers": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$sub_id": {
+        ".write": "!data.exists() && newData.exists()"
       }
     },
     "site_stats": {
       ".read": "true",
+      ".write": "auth != null",
       "visits": {
-        ".write": "auth != null"
+        ".write": "true"
       }
     },
     "admin": {
-      // Highly locked administrative namespace for sessions and histories
       ".read": "auth != null",
       ".write": "auth != null"
     }

@@ -1,6 +1,9 @@
+export type BlogType = "news" | "article" | "song" | "story" | "poem";
+
 export interface BlogPost {
   id: string;
   slug: string;
+  type?: BlogType;
   titleEn: string;
   titleNp: string;
   mainPhoto: string;
@@ -37,14 +40,121 @@ export interface ToolItem {
   url: string;
 }
 
+export interface ServiceAdminPermissions {
+  serviceRequests: boolean;
+  suggestions: boolean;
+  newsletter: boolean;
+  serviceConfiguration: boolean;
+  billing: boolean;
+}
+
 export interface ServiceAdminUser {
   id: string;
   username: string;
   pin: string;
   name: string;
-  role: string;
+  role: "super_admin" | "services_admin" | "cms_admin" | string;
   createdAt: string;
-  status?: "active" | "restricted";
+  status?: "active" | "frozen" | "restricted";
+  permissions?: ServiceAdminPermissions;
+}
+
+export type ServiceFieldType = 
+  | "short_text" 
+  | "long_text" 
+  | "number" 
+  | "email" 
+  | "phone" 
+  | "date" 
+  | "time" 
+  | "datetime" 
+  | "dropdown" 
+  | "radio" 
+  | "checkbox" 
+  | "multichoice" 
+  | "file_upload" 
+  | "image_upload";
+
+export interface ServiceQuestion {
+  id: string;
+  labelEn: string;
+  labelNp?: string;
+  fieldType: ServiceFieldType;
+  required: boolean;
+  placeholder?: string;
+  helpText?: string;
+  options?: string[];
+  defaultValue?: string;
+  maxImages?: number;
+  allowedFileTypes?: string[];
+  order: number;
+}
+
+export interface ServiceInvoice {
+  invoiceId: string;
+  submissionId: string;
+  serviceId: string;
+  serviceTitle: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  clientAddress?: string;
+  amount: number;
+  amountFormatted: string;
+  currency: string;
+  submittedAt: string;
+  paymentDueAt: string; // submittedAt + 12 hours
+  paymentStatus: "Pending" | "Paid" | "Failed" | "Cancelled" | "Expired";
+  paymentMethod?: string;
+  paymentReference?: string;
+  paidAt?: string;
+  notes?: string;
+  answers?: Record<string, any>;
+  attachments?: Array<{ name: string; fileName: string; data: string }>;
+}
+
+export interface ServiceItem {
+  id: string;
+  titleEn: string;
+  titleNp: string;
+  descriptionEn: string;
+  descriptionNp: string;
+  priceEn: string;
+  priceNp: string;
+  whatsappMessageEn: string;
+  whatsappMessageNp: string;
+  officialLink: string;
+  icon: string;
+  photoReqsEn?: string;
+  photoReqsNp?: string;
+  docReqsEn?: string;
+  docReqsNp?: string;
+  specialNoticeEn?: string;
+  specialNoticeNp?: string;
+  customQuestionsEn?: string;
+  customQuestionsNp?: string;
+  questions?: ServiceQuestion[];
+  pdfEnabled?: boolean;
+  pdfRequired?: boolean;
+  pdfLabelEn?: string;
+  pdfLabelNp?: string;
+  photo1Enabled?: boolean;
+  photo1Required?: boolean;
+  photo1LabelEn?: string;
+  photo1LabelNp?: string;
+  photo2Enabled?: boolean;
+  photo2Required?: boolean;
+  photo2LabelEn?: string;
+  photo2LabelNp?: string;
+  photo3Enabled?: boolean;
+  photo3Required?: boolean;
+  photo3LabelEn?: string;
+  photo3LabelNp?: string;
+  photo4Enabled?: boolean;
+  photo4Required?: boolean;
+  photo4LabelEn?: string;
+  photo4LabelNp?: string;
+  serverStatus?: "active" | "down" | "online" | "offline" | string;
 }
 
 export interface PortfolioData {
@@ -140,48 +250,7 @@ export interface PortfolioData {
     descriptionNp: string;
     icon: string;
   }>;
-  services: Array<{
-    id: string;
-    titleEn: string;
-    titleNp: string;
-    descriptionEn: string;
-    descriptionNp: string;
-    priceEn: string;
-    priceNp: string;
-    whatsappMessageEn: string;
-    whatsappMessageNp: string;
-    officialLink: string;
-    icon: string;
-    photoReqsEn?: string;
-    photoReqsNp?: string;
-    docReqsEn?: string;
-    docReqsNp?: string;
-    specialNoticeEn?: string;
-    specialNoticeNp?: string;
-    customQuestionsEn?: string;
-    customQuestionsNp?: string;
-    pdfEnabled?: boolean;
-    pdfRequired?: boolean;
-    pdfLabelEn?: string;
-    pdfLabelNp?: string;
-    photo1Enabled?: boolean;
-    photo1Required?: boolean;
-    photo1LabelEn?: string;
-    photo1LabelNp?: string;
-    photo2Enabled?: boolean;
-    photo2Required?: boolean;
-    photo2LabelEn?: string;
-    photo2LabelNp?: string;
-    photo3Enabled?: boolean;
-    photo3Required?: boolean;
-    photo3LabelEn?: string;
-    photo3LabelNp?: string;
-    photo4Enabled?: boolean;
-    photo4Required?: boolean;
-    photo4LabelEn?: string;
-    photo4LabelNp?: string;
-    serverStatus?: "active" | "down" | "online" | "offline" | string;
-  }>;
+  services: ServiceItem[];
   popup: {
     active: boolean;
     imageUrl: string;
@@ -220,8 +289,8 @@ export interface PortfolioData {
 
 export const defaultPortfolioData: PortfolioData = {
   header: {
-    logoUrl: "",
-    faviconUrl: "",
+    logoUrl: "/profile.jpg",
+    faviconUrl: "/favicon.ico",
     brandTextEn: "Amit Joshi",
     brandTextNp: "अमित जोशी"
   },
@@ -344,51 +413,57 @@ export const defaultPortfolioData: PortfolioData = {
     list: [
       {
         id: "blog-1",
-        slug: "coming-soon-1",
-        titleEn: "Coming Soon - Tech Insights & Editorial #1",
-        titleNp: "छिट्टै आउँदैछ - प्रविधि लेख #१",
+        slug: "modern-full-stack-web-architecture-nepal-2026",
+        type: "article",
+        titleEn: "Modern Full-Stack Web Architecture in 2026",
+        titleNp: "२०२६ मा आधुनिक फुल-स्ट्याक वेब आर्किटेक्चर",
         mainPhoto: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1200&auto=format&fit=crop&q=80",
-        additionalPhotos: [],
-        contentEn: "Content for this article is currently being drafted and will be published soon. Stay tuned for in-depth technical insights.",
-        contentNp: "यस लेखको सामग्री हाल तयार पारिँदैछ र चाँडै प्रकाशित गरिनेछ। थप जानकारीका लागि जोडिरहनुहोस्।",
+        additionalPhotos: [
+          "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&auto=format&fit=crop&q=80",
+          "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80"
+        ],
+        contentEn: "Building robust, scalable applications requires careful consideration of both frontend presentation and backend resilience. In this editorial, we explore real-time synchronization, edge distribution, and low-latency database architectures that power high-concurrency enterprise web systems.\n\nFrom localized fonts and Bikram Sambat date conversions to microsecond database queries, engineering systems for Nepal demands both global best practices and local cultural sensitivity.",
+        contentNp: "बलियो र मापनयोग्य अनुप्रयोगहरू निर्माण गर्दा फ्रन्टइन्ड प्रस्तुतीकरण र ब्याकइन्ड लचिलोपन दुवैलाई ध्यान दिनु आवश्यक छ। यस सम्पादकीयमा, हामी वास्तविक-समय सिङ्क्रोनाइजेसन, एज वितरण, र कम-विलम्बता डाटाबेस आर्किटेक्चरहरूको अन्वेषण गर्छौं।\n\nस्थानीयकृत फन्टहरू र विक्रम संवत क्यालेन्डर रूपान्तरणदेखि माइक्रोसेकेन्ड डाटाबेस क्वेरीहरूसम्म, प्रणालीहरूको इञ्जिनियरिङले विश्वव्यापी उत्कृष्ट अभ्यासहरू र स्थानीय सांस्कृतिक संवेदनशीलता दुवैको माग गर्दछ।",
         authorEn: "Amit Joshi",
         authorNp: "अमित जोशी",
-        dateEn: "Coming Soon",
-        dateNp: "छिट्टै आउँदैछ",
-        timeEn: "Coming Soon",
-        timeNp: "छिट्टै आउँदैछ"
+        dateEn: "2026-08-12",
+        dateNp: "२०८३-०४-२८",
+        timeEn: "10:30 AM",
+        timeNp: "१०:३० बिहान"
       },
       {
         id: "blog-2",
-        slug: "coming-soon-2",
-        titleEn: "Coming Soon - Localized Engineering & Systems #2",
-        titleNp: "छिट्टै आउँदैछ - प्रविधि लेख #२",
+        slug: "localized-digital-utilities-nepal-tech-ecosystem",
+        type: "news",
+        titleEn: "Empowering Nepal's Digital Ecosystem with Localized Utilities",
+        titleNp: "स्थानीयकृत उपयोगिताहरूसँग नेपालको डिजिटल इकोसिस्टमलाई सशक्त बनाउँदै",
         mainPhoto: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&auto=format&fit=crop&q=80",
         additionalPhotos: [],
-        contentEn: "New insights on localized engineering, unicode font parsers, and web architecture are coming soon.",
-        contentNp: "स्थानीयकृत इन्जिनियरिङ र वेब वास्तुकला सम्बन्धी नयाँ लेखहरू चाँडै आउँदैछन्।",
+        contentEn: "Digital transformation is most effective when it speaks the local language. Discover how open-source Preeti-Unicode tools, Bikram Sambat date pickers, and localized invoice builders are transforming how government offices and businesses operate across Nepal.",
+        contentNp: "स्थानीय भाषामा काम गर्दा डिजिटल रूपान्तरण सबैभन्दा प्रभावकारी हुन्छ। खुला स्रोत प्रिती-युनिकोड उपकरणहरू, बिक्रम संवत मिति चयनकर्ताहरू, र स्थानीयकृत इनभ्वाइस निर्माणकर्ताहरूले नेपालभर कसरी काम गरिरहेका छन् भन्ने बारे जान्नुहोस्।",
         authorEn: "Amit Joshi",
         authorNp: "अमित जोशी",
-        dateEn: "Coming Soon",
-        dateNp: "छिट्टै आउँदैछ",
-        timeEn: "Coming Soon",
-        timeNp: "छिट्टै आउँदैछ"
+        dateEn: "2026-08-10",
+        dateNp: "२०८३-०४-२६",
+        timeEn: "02:15 PM",
+        timeNp: "०२:१५ दिउँसो"
       },
       {
         id: "blog-3",
-        slug: "coming-soon-3",
-        titleEn: "Coming Soon - Architecture & Design Logs #3",
-        titleNp: "छिट्टै आउँदैछ - डिजाइन लग #३",
+        slug: "high-performance-realtime-database-patterns",
+        type: "article",
+        titleEn: "Designing High-Performance Realtime Data Pipelines",
+        titleNp: "उच्च-प्रदर्शन रियल-टाइम डाटा पाइपलाइन डिजाइन गर्दै",
         mainPhoto: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80",
         additionalPhotos: [],
-        contentEn: "Architectural logs and design case studies will be uploaded shortly.",
-        contentNp: "आर्किटेक्चरल लगहरू र डिजाइन विषयवस्तुहरू चाँडै अपलोड गरिनेछ।",
+        contentEn: "A deep dive into single-device sessions, granular role-based security rules, and real-time listeners for production dashboard management.",
+        contentNp: "एकल-उपकरण सत्रहरू, भूमिका-आधारित सुरक्षा नियमहरू, र वास्तविक समयका श्रोताहरूमा गहिरो विश्लेषण।",
         authorEn: "Amit Joshi",
         authorNp: "अमित जोशी",
-        dateEn: "Coming Soon",
-        dateNp: "छिट्टै आउँदैछ",
-        timeEn: "Coming Soon",
-        timeNp: "छिट्टै आउँदैछ"
+        dateEn: "2026-08-05",
+        dateNp: "२०८३-०४-२१",
+        timeEn: "09:00 AM",
+        timeNp: "०९:०० बिहान"
       }
     ]
   },
@@ -403,10 +478,25 @@ export const defaultPortfolioData: PortfolioData = {
     { id: "pl-8", type: "tool", slug: "calendar-converter", targetId: "tool-1", titleEn: "Nepali BS Calendar Converter", titleNp: "नेपाली बि.सं. क्यालेन्डर रूपान्तरण", redirectDelaySec: 30 },
     { id: "pl-9", type: "form", slug: "contact-form", targetId: "contact-form", titleEn: "Direct Contact Form", titleNp: "प्रत्यक्ष सम्पर्क फारम" },
     { id: "pl-10", type: "form", slug: "service-application", targetId: "serv-1", titleEn: "Enterprise Service Application", titleNp: "इन्टरप्राइज सेवा आवेदन" },
-    { id: "pl-11", type: "blog", slug: "full-stack-web-architecture-2026", targetId: "blog-1", titleEn: "Modern Enterprise Web Architecture", titleNp: "आधुनिक इन्टरप्राइज वेब आर्किटेक्चर" }
+    { id: "pl-11", type: "blog", slug: "modern-full-stack-web-architecture-nepal-2026", targetId: "blog-1", titleEn: "Modern Enterprise Web Architecture", titleNp: "आधुनिक इन्टरप्राइज वेब आर्किटेक्चर" }
   ],
   serviceAdminUsers: [
-    { id: "sau-1", username: "loginadmin", pin: "1860", name: "Primary Services Admin", role: "services_admin", status: "active", createdAt: "2026-08-12T00:00:00.000Z" }
+    { 
+      id: "sau-1", 
+      username: "loginadmin", 
+      pin: "1860", 
+      name: "Primary Services Admin", 
+      role: "super_admin", 
+      status: "active", 
+      permissions: {
+        serviceRequests: true,
+        suggestions: true,
+        newsletter: true,
+        serviceConfiguration: true,
+        billing: true
+      },
+      createdAt: "2026-08-12T00:00:00.000Z" 
+    }
   ],
   lastEdited: "August 12, 2026, 11:35 AM",
   education: [
@@ -650,12 +740,54 @@ export const defaultPortfolioData: PortfolioData = {
       titleNp: "अनुकूलन इन्टरप्राइज पोर्टल डिजाइन",
       descriptionEn: "Production-ready web systems featuring modular layout components, light-dark reactive nodes, and advanced server scaling.",
       descriptionNp: "मोड्युलर लेआउट कम्पोनेन्टहरू, लाइट-डार्क रियाक्टिभ नोडहरू, र उन्नत सर्भर स्केलिङ सहितका उत्पादनका लागि तयार वेब प्रणालीहरू।",
-      priceEn: "NPR 150,000 onwards",
-      priceNp: "रु १,५०,००० देखि सुरु",
+      priceEn: "NPR 150,000",
+      priceNp: "रु १,५०,०००",
       whatsappMessageEn: "Hello Amit, I am interested in your Custom Enterprise Portal Design service. Please let me know your availability for a technical consultation.",
       whatsappMessageNp: "नमस्कार अमित, म तपाईंको 'कस्टम इन्टरप्राइज पोर्टल डिजाइन' सेवामा इच्छुक छु। कृपया प्राविधिक परामर्शको लागि उपलब्ध समय जानकारी गराउनुहोला।",
       officialLink: "https://amitjoshi.info.np/services/enterprise",
-      icon: "Layout"
+      icon: "Layout",
+      questions: [
+        {
+          id: "q-1",
+          order: 1,
+          labelEn: "Organization / Company Name",
+          labelNp: "संस्था वा कम्पनीको नाम",
+          fieldType: "short_text",
+          required: true,
+          placeholder: "e.g. Acme Innovations Nepal",
+          helpText: "Official legal entity name"
+        },
+        {
+          id: "q-2",
+          order: 2,
+          labelEn: "Expected Delivery Timeline",
+          labelNp: "अपेक्षित कार्य समापन समय",
+          fieldType: "dropdown",
+          required: true,
+          options: ["Urgent (Within 2 Weeks)", "Standard (1 Month)", "Comprehensive (2 - 3 Months)", "Flexible"],
+          defaultValue: "Standard (1 Month)"
+        },
+        {
+          id: "q-3",
+          order: 3,
+          labelEn: "Project Scope & Technical Requirements",
+          labelNp: "परियोजना दायरा र प्राविधिक आवश्यकताहरू",
+          fieldType: "long_text",
+          required: true,
+          placeholder: "Describe the features, expected traffic, and specific integrations needed..."
+        },
+        {
+          id: "q-4",
+          order: 4,
+          labelEn: "Upload Brand Assets & Logos (Images)",
+          labelNp: "ब्रान्ड सम्पत्ति र लोगोहरू अपलोड गर्नुहोस्",
+          fieldType: "image_upload",
+          required: false,
+          maxImages: 4,
+          allowedFileTypes: ["jpg", "jpeg", "png", "webp"],
+          helpText: "Upload high-res PNG, JPG or WebP images (max 4 images)"
+        }
+      ]
     },
     {
       id: "serv-2",
@@ -663,12 +795,42 @@ export const defaultPortfolioData: PortfolioData = {
       titleNp: "सुरक्षित फायरबेस/CMS आर्किटेक्चर",
       descriptionEn: "Zero-latency database design with strict Firebase rule enforcement, Single Session client verification, and custom Rich-Text state tools.",
       descriptionNp: "कडा फायरबेस नियमहरू, सिंगल सेसन क्लाइन्ट प्रमाणिकरण, र अनुकूलन रिच-टेक्स्ट अवस्था उपकरणहरूको साथ शून्य-विलम्बता डाटाबेस डिजाइन।",
-      priceEn: "NPR 95,000 onwards",
-      priceNp: "रु ९५,००० देखि सुरु",
+      priceEn: "NPR 95,000",
+      priceNp: "रु ९५,०००",
       whatsappMessageEn: "Hello Amit, I want to inquire about setting up a Secure Firebase/CMS Architecture for my business application. Let's discuss details.",
       whatsappMessageNp: "नमस्कार अमित, म मेरो व्यावसायिक अनुप्रयोगको लागि 'सुरक्षित फायरबेस/CMS आर्किटेक्चर' सेटअपको बारेमा सोधपुछ गर्न चाहन्छु। थप छलफल गरौं।",
       officialLink: "https://amitjoshi.info.np/services/cms",
-      icon: "ShieldAlert"
+      icon: "ShieldAlert",
+      questions: [
+        {
+          id: "q-201",
+          order: 1,
+          labelEn: "Current Database Platform",
+          labelNp: "हालको डाटाबेस प्लेटफर्म",
+          fieldType: "dropdown",
+          required: true,
+          options: ["Firebase Realtime Database", "Firestore", "PostgreSQL / MySQL", "None (New Project)"],
+          defaultValue: "Firebase Realtime Database"
+        },
+        {
+          id: "q-202",
+          order: 2,
+          labelEn: "Target Security Level & Concurrency",
+          labelNp: "लक्षित सुरक्षा स्तर र प्रयोगकर्ता संख्या",
+          fieldType: "short_text",
+          required: true,
+          placeholder: "e.g. 500 simultaneous admins, strict RBAC"
+        },
+        {
+          id: "q-203",
+          order: 3,
+          labelEn: "Upload Architecture Diagram / Wireframe (Optional)",
+          labelNp: "आर्किटेक्चर रेखाचित्र अपलोड गर्नुहोस्",
+          fieldType: "file_upload",
+          required: false,
+          allowedFileTypes: ["pdf", "png", "jpg"]
+        }
+      ]
     },
     {
       id: "serv-3",
@@ -676,12 +838,32 @@ export const defaultPortfolioData: PortfolioData = {
       titleNp: "अन्तरक्रियात्मक UI/UX र वेब प्रदर्शन अडिट",
       descriptionEn: "Deep diagnostic audits targeting core web vitals, canvas animations, and localized SEO schemas.",
       descriptionNp: "कोर वेब भिटल्स, क्यानभास एनिमेसनहरू, र स्थानीयकृत SEO स्कीमाहरूलाई लक्षित गर्दै गहिरो निदान अडिटहरू।",
-      priceEn: "NPR 45,000 onwards",
-      priceNp: "रु ४५,००० देखि सुरु",
+      priceEn: "NPR 45,000",
+      priceNp: "रु ४५,०००",
       whatsappMessageEn: "Hello Amit, I need a performance and UX audit for our existing website portal. Please guide us on the next steps.",
       whatsappMessageNp: "नमस्कार अमित, मलाई हाम्रो अवस्थित वेबसाइट पोर्टलको लागि कार्यसम्पादन र UX अडिट आवश्यक छ। कृपया अर्को चरणहरूको लागि मार्गदर्शन गर्नुहोस्।",
       officialLink: "https://amitjoshi.info.np/services/audit",
-      icon: "Gauge"
+      icon: "Gauge",
+      questions: [
+        {
+          id: "q-301",
+          order: 1,
+          labelEn: "Website URL to Audit",
+          labelNp: "अडिट गर्नुपर्ने वेबसाइट URL",
+          fieldType: "short_text",
+          required: true,
+          placeholder: "https://yourwebsite.com"
+        },
+        {
+          id: "q-302",
+          order: 2,
+          labelEn: "Key Performance Bottlenecks Encountered",
+          labelNp: "अनुभव गरिएका मुख्य कार्यसम्पादन समस्याहरू",
+          fieldType: "long_text",
+          required: false,
+          placeholder: "Slow initial page loads, high LCP scores, mobile rendering glitches..."
+        }
+      ]
     }
   ],
   popup: {
