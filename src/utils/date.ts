@@ -19,8 +19,8 @@ export function getNepalBSAndGregorian() {
   const month = nepalDate.getMonth(); // 0-11
   const date = nepalDate.getDate();
 
-  // BS Year calculation (Accurate Bikram Sambat mapping, e.g., 2080 BS / 29 Shrawan 2080)
-  let bsYear = year >= 2026 ? (2080 + (year - 2026)) : (year + 57);
+  // BS Year calculation (Accurate Bikram Sambat mapping, e.g. 2083 BS)
+  let bsYear = year + 57;
   let bsMonthIndex = 0;
   let bsDateNum = date;
 
@@ -207,9 +207,13 @@ export function formatBlogTimestamp(dateStr?: string, timeStr?: string): string 
 export function formatBlogLocationDate(dateStr: string): { dateStr: string; location: string } {
   const location = 'Kathmandu, Nepal';
   const formattedDate = formatBlogDate(dateStr);
+  const parsed = new Date(dateStr);
+  const bsYr = !isNaN(parsed.getTime())
+    ? (parsed.getFullYear() + (parsed.getMonth() < 3 || (parsed.getMonth() === 3 && parsed.getDate() < 14) ? 56 : 57))
+    : 2083;
   
   return {
-    dateStr: `${formattedDate} (2080 BS)`,
+    dateStr: `${formattedDate} (${bsYr} BS)`,
     location
   };
 }
