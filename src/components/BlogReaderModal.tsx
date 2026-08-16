@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, ArrowLeft, Clock, Volume2, Link, Check, Image as ImageIcon, Share2, Facebook, Twitter, Linkedin, MessageCircle } from "lucide-react";
 import { BlogPost } from "../utils/defaultData";
 import { formatBlogTimestamp, formatBlogLocationDate } from "../utils/date";
+import BlogContentRenderer from "./BlogContentRenderer";
 
 interface BlogReaderModalProps {
   isOpen: boolean;
@@ -237,13 +238,9 @@ export default function BlogReaderModal({ isOpen, blog, onClose }: BlogReaderMod
             </div>
           )}
 
-          {/* Article Body */}
-          <div className="prose prose-slate dark:prose-invert max-w-none text-base leading-relaxed space-y-4 font-sans text-slate-700 dark:text-slate-300">
-            {content.split('\n\n').map((para, i) => (
-              <p key={i} className="leading-relaxed">
-                {para}
-              </p>
-            ))}
+          {/* Article Body - Exactly preserving user formatting, newlines, blank lines, and structure */}
+          <div className="text-base leading-relaxed font-sans text-slate-700 dark:text-slate-200">
+            <BlogContentRenderer content={content} />
           </div>
 
           {/* Additional Photos / Gallery */}

@@ -23,9 +23,145 @@ import ServicesSection from "./components/ServicesSection";
 import ContactForm from "./components/ContactForm";
 import BlogSection from "./components/BlogSection";
 import BlogReaderModal from "./components/BlogReaderModal";
+import BlogEditorialPage from "./components/BlogEditorialPage";
+import BlogReaderPage from "./components/BlogReaderPage";
+import NotFound404 from "./components/NotFound404";
+import InvoiceView from "./components/InvoiceView";
 import ToolRedirectModal from "./components/ToolRedirectModal";
 import FormFillupModal from "./components/FormFillupModal";
 import NewsletterSignup from "./components/NewsletterSignup";
+
+export type RouteView = 
+  | "home" 
+  | "social-media" 
+  | "initiatives" 
+  | "tools" 
+  | "education" 
+  | "services" 
+  | "contact" 
+  | "blogs" 
+  | "blog-detail" 
+  | "invoices" 
+  | "404";
+
+export interface ParsedRoute {
+  view: RouteView;
+  targetId?: string;
+  blog?: any;
+  invoiceId?: string;
+  matchedPermalink?: any;
+  path: string;
+}
+
+export function resolveRoute(data: PortfolioData): ParsedRoute {
+  if (typeof window === "undefined") {
+    return { view: "home", targetId: "home-section", path: "/" };
+  }
+
+  const rawPath = window.location.pathname;
+  const hash = window.location.hash;
+  const search = window.location.search;
+  const params = new URLSearchParams(search);
+
+  // Normalize path & hash
+  let cleanPath = rawPath.toLowerCase().replace(/^\/+|\/+$/g, "");
+  let cleanHash = hash.toLowerCase().replace(/^#\/?|\/+$/g, "");
+
+  // If hash routing is used (e.g. #/tools or #social-media)
+  if (cleanHash && (!cleanPath || cleanPath === "index.html")) {
+    cleanPath = cleanHash;
+  }
+
+  // 1. Direct query parameter triggers
+  if (params.has("blog")) {
+    const blogParam = params.get("blog")?.toLowerCase();
+    const foundBlog = (data.blogs?.list || []).find(
+      b => b.slug?.toLowerCase() === blogParam || b.id?.toLowerCase() === blogParam || b.titleEn?.toLowerCase().includes(blogParam || "")
+    );
+    if (foundBlog) {
+      return { view: "blog-detail", blog: foundBlog, path: `/blog/${foundBlog.slug || foundBlog.id}` };
+    }
+  }
+
+  if (params.has("invoice")) {
+    return { view: "invoices", invoiceId: params.get("invoice") || "", path: `/invoices/${params.get("invoice")}` };
+  }
+
+  // 2. Standard direct SPA paths
+  if (!cleanPath || cleanPath === "home" || cleanPath === "index.html") {
+    return { view: "home", targetId: "home-section", path: "/" };
+  }
+
+  if (cleanPath === "social-media" || cleanPath === "social" || cleanPath === "socials" || cleanPath === "social-section") {
+    return { view: "social-media", targetId: "social-section", path: "/social-media" };
+  }
+
+  if (cleanPath === "initiatives" || cleanPath === "initiative" || cleanPath === "initiatives-section") {
+    return { view: "initiatives", targetId: "initiatives-section", path: "/initiatives" };
+  }
+
+  if (cleanPath === "tools" || cleanPath === "toolkit" || cleanPath === "utilities" || cleanPath === "tools-section") {
+    return { view: "tools", targetId: "tools-section", path: "/tools" };
+  }
+
+  if (cleanPath === "education" || cleanPath === "academic" || cleanPath === "education-section") {
+    return { view: "education", targetId: "education-section", path: "/education" };
+  }
+
+  if (cleanPath === "services" || cleanPath === "service" || cleanPath === "services-section") {
+    return { view: "services", targetId: "services-section", path: "/services" };
+  }
+
+  if (cleanPath === "contact" || cleanPath === "connect" || cleanPath === "contact-section") {
+    return { view: "contact", targetId: "contact-section", path: "/contact" };
+  }
+
+  if (cleanPath === "blogs" || cleanPath === "blog" || cleanPath === "articles" || cleanPath === "blogs-section") {
+    return { view: "blogs", path: "/blogs" };
+  }
+
+  // 3. Detailed Blog Article Route: /blogs/:slug or /blog/:slug
+  if (cleanPath.startsWith("blogs/") || cleanPath.startsWith("blog/") || cleanPath.startsWith("articles/")) {
+    const slug = cleanPath.replace(/^(blogs|blog|articles)\/+/, "");
+    const foundBlog = (data.blogs?.list || []).find(
+      b => b.slug?.toLowerCase() === slug || b.id?.toLowerCase() === slug
+    );
+    if (foundBlog) {
+      return { view: "blog-detail", blog: foundBlog, path: `/blog/${foundBlog.slug || foundBlog.id}` };
+    }
+  }
+
+  // 4. Invoice Route: /invoices/:id or /invoice/:id
+  if (cleanPath.startsWith("invoices/") || cleanPath.startsWith("invoice/")) {
+    const invId = cleanPath.replace(/^(invoices|invoice)\/+/, "");
+    return { view: "invoices", invoiceId: invId, path: `/invoices/${invId}` };
+  }
+
+  // 5. Custom permalinks from CMS
+  const customLinks = data.customLinks || [];
+  const matchedPermalink = customLinks.find(link => {
+    const lSlug = (link.slug || "").toLowerCase().replace(/^\/+|\/+$/g, "");
+    return lSlug && (cleanPath === lSlug || cleanHash === lSlug);
+  });
+
+  if (matchedPermalink) {
+    if (matchedPermalink.type === "blog") {
+      const foundBlog = (data.blogs?.list || []).find(
+        b => b.id === matchedPermalink.targetId || b.slug === matchedPermalink.targetId
+      );
+      if (foundBlog) {
+        return { view: "blog-detail", blog: foundBlog, matchedPermalink, path: `/${matchedPermalink.slug}` };
+      }
+    }
+    if (matchedPermalink.type === "page") {
+      return { view: "home", targetId: matchedPermalink.targetId, matchedPermalink, path: `/${matchedPermalink.slug}` };
+    }
+    return { view: "home", matchedPermalink, path: `/${matchedPermalink.slug}` };
+  }
+
+  // 6. Unknown / Invalid Path -> 404 Route Not Found
+  return { view: "404", path: rawPath };
+}
 
 export default function App() {
   // Theme state
@@ -50,6 +186,9 @@ export default function App() {
       return false;
     }
   });
+
+  // SPA Route State
+  const [routeState, setRouteState] = useState<ParsedRoute>(() => resolveRoute(defaultPortfolioData));
 
   // Analytics & Custom Deep Link Modals State
   const [visitCount, setVisitCount] = useState<number>(1860);
@@ -167,94 +306,75 @@ export default function App() {
     }
   }, []);
 
-  // Check custom URL permalinks and parameters for instant popup / section scroll
+  // URL change listener for back/forward navigation and initial load
   useEffect(() => {
-    if (!dataLoaded) return;
+    const handleUrlChange = () => {
+      const resolved = resolveRoute(portfolioData);
+      setRouteState(resolved);
 
-    const path = window.location.pathname.toLowerCase();
-    const search = window.location.search.toLowerCase();
-    const hash = window.location.hash.toLowerCase();
-    const params = new URLSearchParams(window.location.search);
-
-    // 1. Check custom permalinks list first
-    const customLinks = portfolioData.customLinks || [];
-    const matchedPermalink = customLinks.find(link => {
-      const cleanSlug = (link.slug || "").toLowerCase().replace(/^\/+/, '');
-      return cleanSlug && (path.includes(cleanSlug) || search.includes(cleanSlug) || hash.includes(cleanSlug));
-    });
-
-    if (matchedPermalink) {
-      if (matchedPermalink.type === "tool") {
-        const foundTool = (portfolioData.tools || []).find(t => t.id === matchedPermalink.targetId || t.url?.includes(matchedPermalink.targetId));
-        if (foundTool) {
-          setSelectedTool(foundTool);
-          setIsToolModalOpen(true);
-          return;
-        }
-      } else if (matchedPermalink.type === "form") {
-        setFormModalState({
-          isOpen: true,
-          title: matchedPermalink.titleEn || "Online Form",
-          targetId: matchedPermalink.targetId
-        });
-        return;
-      } else if (matchedPermalink.type === "blog") {
-        const foundBlog = (portfolioData.blogs?.list || []).find(b => b.id === matchedPermalink.targetId || b.slug === matchedPermalink.targetId);
-        if (foundBlog) {
-          setSelectedBlog(foundBlog);
-          setIsBlogModalOpen(true);
-          return;
-        }
-      } else if (matchedPermalink.type === "page") {
-        const secId = matchedPermalink.targetId;
-        const el = document.getElementById(secId);
-        if (el) el.scrollIntoView({ behavior: "smooth" });
-        return;
+      if (resolved.targetId) {
+        setTimeout(() => {
+          const el = document.getElementById(resolved.targetId!);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 80);
       }
+    };
+
+    window.addEventListener("popstate", handleUrlChange);
+    window.addEventListener("hashchange", handleUrlChange);
+
+    // Initial resolution when data loaded
+    if (dataLoaded) {
+      handleUrlChange();
     }
 
-    // 2. Direct query parameters check
-    if (params.has("tool")) {
-      const toolQuery = params.get("tool")?.toLowerCase();
-      const foundTool = (portfolioData.tools || []).find(t => 
-        t.id?.toLowerCase() === toolQuery || 
-        t.nameEn?.toLowerCase().includes(toolQuery || "") ||
-        t.url?.toLowerCase().includes(toolQuery || "")
-      );
-      if (foundTool) {
-        setSelectedTool(foundTool);
-        setIsToolModalOpen(true);
-      }
-    } else if (params.has("form")) {
-      const formQuery = params.get("form");
-      setFormModalState({
-        isOpen: true,
-        title: formQuery ? `${formQuery} Form` : "Online Application Form",
-        targetId: formQuery || "custom-form"
-      });
-    } else if (params.has("blog")) {
-      const blogQuery = params.get("blog")?.toLowerCase();
-      const foundBlog = (portfolioData.blogs?.list || []).find(b => 
-        b.id?.toLowerCase() === blogQuery || 
-        b.slug?.toLowerCase() === blogQuery ||
-        b.titleEn?.toLowerCase().includes(blogQuery || "")
-      );
-      if (foundBlog) {
-        setSelectedBlog(foundBlog);
-        setIsBlogModalOpen(true);
-      }
-    } else if (path.includes("/social-media") || hash.includes("social-media")) {
-      handleNavScroll("social-section");
-    } else if (path.includes("/services") || hash.includes("services")) {
-      handleNavScroll("services-section");
-    } else if (path.includes("/tools") || hash.includes("tools")) {
-      handleNavScroll("tools-section");
-    } else if (path.includes("/blog") || hash.includes("blog")) {
-      handleNavScroll("blog-section");
-    } else if (path.includes("/contact") || hash.includes("contact")) {
-      handleNavScroll("contact-section");
-    }
+    return () => {
+      window.removeEventListener("popstate", handleUrlChange);
+      window.removeEventListener("hashchange", handleUrlChange);
+    };
   }, [dataLoaded, portfolioData]);
+
+  // Main client-side router navigation dispatcher
+  const navigateTo = (path: string) => {
+    if (path.includes("adminloginweb11") || path.includes("servicesadmin")) {
+      window.location.href = path;
+      return;
+    }
+
+    window.history.pushState(null, "", path);
+    const resolved = resolveRoute(portfolioData);
+    setRouteState(resolved);
+    setMobileMenuOpen(false);
+
+    if (resolved.targetId) {
+      setTimeout(() => {
+        const el = document.getElementById(resolved.targetId!);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 80);
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handleNavScroll = (id: string) => {
+    const sectionToPathMap: Record<string, string> = {
+      "home-section": "/",
+      "social-section": "/social-media",
+      "initiatives-section": "/initiatives",
+      "tools-section": "/tools",
+      "education-section": "/education",
+      "services-section": "/services",
+      "blogs-section": "/blogs",
+      "contact-section": "/contact"
+    };
+
+    const targetPath = sectionToPathMap[id] || `/#${id}`;
+    navigateTo(targetPath);
+  };
 
   // 2. Favicon updater
   useEffect(() => {
@@ -330,14 +450,6 @@ export default function App() {
       alert(`No section found for "${searchQuery}". Try 'tools', 'services', or 'biography'.`);
     }
     setSearchQuery("");
-  };
-
-  const handleNavScroll = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    setMobileMenuOpen(false);
   };
 
   if (!dataLoaded) {
@@ -431,7 +543,7 @@ export default function App() {
           <div className="flex items-center justify-between h-20 gap-4">
             {/* Left Side: Logo and Brand Text */}
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-4 cursor-pointer" onClick={() => handleNavScroll("home-section")}>
+              <div className="flex items-center space-x-4 cursor-pointer" onClick={() => navigateTo("/")}>
                 {headerData.logoUrl && (
                   <img 
                     src={headerData.logoUrl} 
@@ -447,7 +559,7 @@ export default function App() {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleNavScroll("contact-section");
+                      navigateTo("/contact");
                     }} 
                     className="text-xs font-mono uppercase tracking-wider text-gray-400 hover:text-cyan-400 transition-colors flex items-center space-x-1 leading-none whitespace-nowrap cursor-pointer text-left focus:outline-none"
                   >
@@ -462,30 +574,30 @@ export default function App() {
             <div className="flex items-center space-x-4 lg:space-x-8">
             {/* Navigation nodes (Desktop) */}
             <nav className="hidden lg:flex items-center space-x-5 text-xs font-semibold uppercase tracking-wider">
-              <button onClick={() => handleNavScroll("home-section")} className="hover:text-cyan-400 transition-colors">
+              <button onClick={() => navigateTo("/")} className={`hover:text-cyan-400 transition-colors ${routeState.view === "home" ? "text-cyan-400 font-bold" : ""}`}>
                 Home
               </button>
-              <button onClick={() => handleNavScroll("social-section")} className="hover:text-cyan-400 transition-colors">
+              <button onClick={() => navigateTo("/social-media")} className={`hover:text-cyan-400 transition-colors ${routeState.view === "social-media" ? "text-cyan-400 font-bold" : ""}`}>
                 Social Media
               </button>
-              <button onClick={() => handleNavScroll("initiatives-section")} className="hover:text-cyan-400 transition-colors">
+              <button onClick={() => navigateTo("/initiatives")} className={`hover:text-cyan-400 transition-colors ${routeState.view === "initiatives" ? "text-cyan-400 font-bold" : ""}`}>
                 Initiatives
               </button>
-              <button onClick={() => handleNavScroll("tools-section")} className="hover:text-cyan-400 transition-colors">
+              <button onClick={() => navigateTo("/tools")} className={`hover:text-cyan-400 transition-colors ${routeState.view === "tools" ? "text-cyan-400 font-bold" : ""}`}>
                 Tools
               </button>
-              <button onClick={() => handleNavScroll("education-section")} className="hover:text-cyan-400 transition-colors">
+              <button onClick={() => navigateTo("/education")} className={`hover:text-cyan-400 transition-colors ${routeState.view === "education" ? "text-cyan-400 font-bold" : ""}`}>
                 Education
               </button>
               {portfolioData.blogs?.active && (
-                <button onClick={() => handleNavScroll("blogs-section")} className="hover:text-cyan-400 transition-colors">
+                <button onClick={() => navigateTo("/blogs")} className={`hover:text-cyan-400 transition-colors ${routeState.view === "blogs" || routeState.view === "blog-detail" ? "text-cyan-400 font-bold" : ""}`}>
                   Blogs
                 </button>
               )}
-              <button onClick={() => handleNavScroll("services-section")} className="hover:text-cyan-400 transition-colors">
+              <button onClick={() => navigateTo("/services")} className={`hover:text-cyan-400 transition-colors ${routeState.view === "services" ? "text-cyan-400 font-bold" : ""}`}>
                 Services
               </button>
-              <button onClick={() => handleNavScroll("contact-section")} className="hover:text-cyan-400 transition-colors">
+              <button onClick={() => navigateTo("/contact")} className={`hover:text-cyan-400 transition-colors ${routeState.view === "contact" ? "text-cyan-400 font-bold" : ""}`}>
                 Contact
               </button>
             </nav>
@@ -525,7 +637,7 @@ export default function App() {
               {/* Connect with Me Button & Dynamic Time */}
               <div className="hidden md:flex flex-col items-center select-none">
                 <button
-                  onClick={() => handleNavScroll("contact-section")}
+                  onClick={() => navigateTo("/contact")}
                   className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white shadow-lg shadow-cyan-500/10 active:scale-95 duration-150 cursor-pointer"
                 >
                   <span>Connect with Me</span>
@@ -559,246 +671,264 @@ export default function App() {
           <div className={`lg:hidden px-4 pt-2 pb-6 border-t ${
             isDarkMode ? "bg-[#030712]/95 border-white/5" : "bg-white border-slate-200"
           } space-y-3 flex flex-col text-sm font-semibold uppercase tracking-wider`}>
-            <button onClick={() => handleNavScroll("home-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
+            <button onClick={() => navigateTo("/")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
               Home
             </button>
-            <button onClick={() => handleNavScroll("social-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
+            <button onClick={() => navigateTo("/social-media")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
               Social Media
             </button>
-            <button onClick={() => handleNavScroll("initiatives-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
+            <button onClick={() => navigateTo("/initiatives")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
               Initiatives
             </button>
-            <button onClick={() => handleNavScroll("tools-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
+            <button onClick={() => navigateTo("/tools")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
               Tools
             </button>
-            <button onClick={() => handleNavScroll("education-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
+            <button onClick={() => navigateTo("/education")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
               Education
             </button>
             {portfolioData.blogs?.active && (
-              <button onClick={() => handleNavScroll("blogs-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
+              <button onClick={() => navigateTo("/blogs")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
                 Blogs
               </button>
             )}
-            <button onClick={() => handleNavScroll("services-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
+            <button onClick={() => navigateTo("/services")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
               Services
             </button>
-            <button onClick={() => handleNavScroll("contact-section")} className="text-left py-2 hover:text-cyan-400 transition-colors">
+            <button onClick={() => navigateTo("/contact")} className="text-left py-2 hover:text-cyan-400 transition-colors">
               Contact
             </button>
           </div>
         )}
       </header>
 
-      {/* ================= SECTION 1: HOMEPAGE slider & SUMMARY ================= */}
-      <section 
-        id="home-section" 
-        className={`relative min-h-[90vh] flex flex-col justify-center overflow-hidden transition-all duration-1000 ${
-          searchPulseSection === "home-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""
-        }`}
-      >
-        {/* Full-screen Cinematic Slider utilizing the Ken Burns scale-up effect */}
-        <div className="absolute inset-0 z-0">
-          {slides.map((slide, idx) => (
-            <div
-              key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-[1500ms] ease-in-out ${
-                idx === currentSlideIndex ? "opacity-35" : "opacity-0"
-              }`}
-            >
-              <img
-                src={slide.imageUrl}
-                alt={slide.titleEn}
-                className={`h-full w-full object-cover transition-transform duration-[6000ms] ease-out ${
-                  idx === currentSlideIndex ? "scale-115" : "scale-100"
-                }`}
-                referrerPolicy="no-referrer"
-              />
-              {/* Dark vignette gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-transparent to-[#030712]/50" />
-            </div>
-          ))}
-        </div>
-
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-16 text-center space-y-8 max-w-4xl">
-          
-          <div className="space-y-4">
-            <span className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-cyan-400/10 border border-cyan-400/20 text-cyan-400 font-mono text-xs uppercase tracking-widest animate-pulse">
-              <Sparkles className="h-4 w-4" />
-              <span>{homepageData.portalPillEn || "Amit Joshi Official Portal"}</span>
-            </span>
-
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
-              {currentSlide.titleEn}
-            </h1>
-
-            <p className="text-base sm:text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed font-sans">
-              {currentSlide.subtitleEn}
-            </p>
-          </div>
-
-          {/* 4-line summary block */}
-          <div className="bg-white/[0.03] border border-white/8 backdrop-blur-xl rounded-2xl p-6 shadow-2xl max-w-3xl mx-auto text-left space-y-4">
-            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-purple-400 border-b border-white/5 pb-2">
-              {homepageData.executiveSummaryTitleEn || "Core Executive Summary"}
-            </h3>
-            <p className="text-sm text-gray-300 leading-relaxed font-sans">
-              {homepageData.biographySummaryEn}
-            </p>
-          </div>
-
-          {/* Portals & popup triggers */}
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
-            <button
-              onClick={() => setIsBioOpen(true)}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest bg-cyan-500 text-black hover:bg-cyan-400 transition-all shadow-xl shadow-cyan-500/15 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
-            >
-              <span>{homepageData.bioBtnEn || "Read Full Biography"}</span>
-            </button>
-
-            <button
-              onClick={() => handleNavScroll("contact-section")}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/5 hover:bg-cyan-500/10 text-cyan-400 border border-white/10 hover:border-cyan-500/25 transition-all shadow-md transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
-            >
-              <span>{homepageData.connectBtnEn || "Connect to Me Portal"}</span>
-            </button>
-          </div>
-
-        </div>
-
-        {/* Biography Modal */}
-        <BioModal 
-          isOpen={isBioOpen} 
-          onClose={() => setIsBioOpen(false)} 
-          biographyFullEn={homepageData.biographyFullEn || defaultPortfolioData.homepage.biographyFullEn}
-          biographyTitleEn={homepageData.biographyTitleEn}
-          biographyTaglineEn={homepageData.biographyTaglineEn}
-        />
-      </section>
-
-      {/* ================= SECTION 2: SOCIAL MEDIA HUB ================= */}
-      <section 
-        id="social-section" 
-        className={`py-20 relative border-t border-white/5 scroll-mt-24 transition-all duration-1000 ${
-          searchPulseSection === "social-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""
-        }`}
-      >
-        <div className="container mx-auto px-4 relative z-10">
-          
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-3">
-              <Landmark className="h-4 w-4 text-cyan-400" />
-              <span className="text-xs font-mono font-bold tracking-wider text-cyan-400 uppercase">
-                Directory Hub
-              </span>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white font-sans">
-              Social Media Network Hub
-            </h2>
-            <p className="text-gray-400 mt-3 max-w-xl mx-auto text-sm">
-              Click external nodes to redirect. Each routing event increments localized database analytics.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 max-w-6xl mx-auto">
-            {(portfolioData.socials || defaultPortfolioData.socials).map((soc) => (
-              <div
-                key={soc.id}
-                onClick={() => {
-                  try {
-                    const idx = (portfolioData.socials || defaultPortfolioData.socials).findIndex(s => s.id === soc.id);
-                    if (idx !== -1) {
-                      const updateCountRef = ref(db, `portfolio/socials/${idx}/clickCount`);
-                    }
-                  } catch (e) {
-                    console.log("Analytics update ignored.");
-                  }
-                  window.open(soc.url, "_blank", "referrer");
-                }}
-                className="group relative cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-5 hover:bg-white/[0.04] hover:border-cyan-500/35 transition-all duration-300 shadow-lg text-center flex flex-col justify-between h-48 backdrop-blur-md"
-              >
-                <div className="space-y-4">
-                  <div className="mx-auto w-12 h-12 flex items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 group-hover:border-cyan-500/40 transition-all duration-300">
-                    <DynamicLucideIcon name={soc.icon || "Facebook"} className="h-6 w-6 text-cyan-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-white tracking-tight leading-none group-hover:text-cyan-300 transition-colors">
-                      {soc.platform}
-                    </h3>
-                    <p className="text-[10px] text-gray-400 leading-tight mt-2 line-clamp-2">
-                      {soc.titleEn}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-gray-500 font-bold uppercase group-hover:text-cyan-400 transition-colors">
-                  <span>Clicks: {soc.clickCount || 0}</span>
-                  <ExternalLink className="h-3 w-3" />
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      </section>
-
-      {/* ================= SECTION 3: INITIATIVES ================= */}
-      <div className={searchPulseSection === "initiatives-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
-        <InitiativesSection 
-          initiatives={portfolioData.initiatives || defaultPortfolioData.initiatives}
-        />
-      </div>
-
-      {/* ================= SECTION 4: USEFUL TOOLS ================= */}
-      <div className={searchPulseSection === "tools-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
-        <ToolkitSection 
-          tools={portfolioData.tools || defaultPortfolioData.tools}
-        />
-      </div>
-
-      {/* ================= SECTION 5: EDUCATION ================= */}
-      <div className={searchPulseSection === "education-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
-        <EducationSection 
-          education={portfolioData.education || defaultPortfolioData.education}
-        />
-      </div>
-
-      {/* ================= SECTION 6: SERVICES & PASSION PORTAL ================= */}
-      <div className={searchPulseSection === "services-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
-        <ServicesSection 
-          services={portfolioData.services || defaultPortfolioData.services}
-          interests={portfolioData.interests || defaultPortfolioData.interests}
-          logoUrl={portfolioData.header?.logoUrl}
-          faviconUrl={portfolioData.header?.faviconUrl}
+      {/* ================= CONDITIONAL ROUTE VIEW RESOLVER ================= */}
+      {routeState.view === "404" ? (
+        <NotFound404 onNavigate={(p) => navigateTo(p)} />
+      ) : routeState.view === "blogs" ? (
+        <BlogEditorialPage 
           blogs={portfolioData.blogs?.list || []}
-          onOpenBlogModal={(blog) => {
-            setSelectedBlog(blog);
-            setIsBlogModalOpen(true);
-          }}
+          onSelectBlog={(b) => navigateTo(`/blog/${b.slug || b.id}`)}
+          onNavigateHome={() => navigateTo("/")}
         />
-      </div>
+      ) : routeState.view === "blog-detail" && routeState.blog ? (
+        <BlogReaderPage 
+          blog={routeState.blog}
+          allBlogs={portfolioData.blogs?.list || []}
+          onNavigateBack={() => navigateTo("/blogs")}
+          onSelectBlog={(b) => navigateTo(`/blog/${b.slug || b.id}`)}
+        />
+      ) : (
+        <main>
+          {/* ================= SECTION 1: HOMEPAGE slider & SUMMARY ================= */}
+          <section 
+            id="home-section" 
+            className={`relative min-h-[90vh] flex flex-col justify-center overflow-hidden transition-all duration-1000 ${
+              searchPulseSection === "home-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""
+            }`}
+          >
+            {/* Full-screen Cinematic Slider utilizing the Ken Burns scale-up effect */}
+            <div className="absolute inset-0 z-0">
+              {slides.map((slide, idx) => (
+                <div
+                  key={slide.id}
+                  className={`absolute inset-0 transition-opacity duration-[1500ms] ease-in-out ${
+                    idx === currentSlideIndex ? "opacity-35" : "opacity-0"
+                  }`}
+                >
+                  <img
+                    src={slide.imageUrl}
+                    alt={slide.titleEn}
+                    className={`h-full w-full object-cover transition-transform duration-[6000ms] ease-out ${
+                      idx === currentSlideIndex ? "scale-115" : "scale-100"
+                    }`}
+                    referrerPolicy="no-referrer"
+                  />
+                  {/* Dark vignette gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-transparent to-[#030712]/50" />
+                </div>
+              ))}
+            </div>
 
-      {/* ================= SECTION 7: NATIVE BLOG SECTION (2 BOXES PER ROW) ================= */}
-      {portfolioData.blogs?.active && (
-        <div className={searchPulseSection === "blogs-section" ? "ring-4 ring-amber-500 ring-offset-4 ring-offset-black" : ""}>
-          <BlogSection 
-            blogs={portfolioData.blogs?.list || []}
-            onOpenBlogModal={(blog) => {
-              setSelectedBlog(blog);
-              setIsBlogModalOpen(true);
-            }}
-          />
-        </div>
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-16 text-center space-y-8 max-w-4xl">
+              
+              <div className="space-y-4">
+                <span className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-cyan-400/10 border border-cyan-400/20 text-cyan-400 font-mono text-xs uppercase tracking-widest animate-pulse">
+                  <Sparkles className="h-4 w-4" />
+                  <span>{homepageData.portalPillEn || "Amit Joshi Official Portal"}</span>
+                </span>
+
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                  {currentSlide.titleEn}
+                </h1>
+
+                <p className="text-base sm:text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed font-sans">
+                  {currentSlide.subtitleEn}
+                </p>
+              </div>
+
+              {/* 4-line summary block */}
+              <div className="bg-white/[0.03] border border-white/8 backdrop-blur-xl rounded-2xl p-6 shadow-2xl max-w-3xl mx-auto text-left space-y-4">
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-purple-400 border-b border-white/5 pb-2">
+                  {homepageData.executiveSummaryTitleEn || "Core Executive Summary"}
+                </h3>
+                <p className="text-sm text-gray-300 leading-relaxed font-sans">
+                  {homepageData.biographySummaryEn}
+                </p>
+              </div>
+
+              {/* Portals & popup triggers */}
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
+                <button
+                  onClick={() => setIsBioOpen(true)}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest bg-cyan-500 text-black hover:bg-cyan-400 transition-all shadow-xl shadow-cyan-500/15 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                >
+                  <span>{homepageData.bioBtnEn || "Read Full Biography"}</span>
+                </button>
+
+                <button
+                  onClick={() => navigateTo("/contact")}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/5 hover:bg-cyan-500/10 text-cyan-400 border border-white/10 hover:border-cyan-500/25 transition-all shadow-md transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                >
+                  <span>{homepageData.connectBtnEn || "Connect to Me Portal"}</span>
+                </button>
+              </div>
+
+            </div>
+
+            {/* Biography Modal */}
+            <BioModal 
+              isOpen={isBioOpen} 
+              onClose={() => setIsBioOpen(false)} 
+              biographyFullEn={homepageData.biographyFullEn || defaultPortfolioData.homepage.biographyFullEn}
+              biographyTitleEn={homepageData.biographyTitleEn}
+              biographyTaglineEn={homepageData.biographyTaglineEn}
+            />
+          </section>
+
+          {/* ================= SECTION 2: SOCIAL MEDIA HUB ================= */}
+          <section 
+            id="social-section" 
+            className={`py-20 relative border-t border-white/5 scroll-mt-24 transition-all duration-1000 ${
+              searchPulseSection === "social-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""
+            }`}
+          >
+            <div className="container mx-auto px-4 relative z-10">
+              
+              <div className="text-center mb-16">
+                <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-3">
+                  <Landmark className="h-4 w-4 text-cyan-400" />
+                  <span className="text-xs font-mono font-bold tracking-wider text-cyan-400 uppercase">
+                    Directory Hub
+                  </span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white font-sans">
+                  Social Media Network Hub
+                </h2>
+                <p className="text-gray-400 mt-3 max-w-xl mx-auto text-sm">
+                  Click external nodes to redirect. Each routing event increments localized database analytics.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 max-w-6xl mx-auto">
+                {(portfolioData.socials || defaultPortfolioData.socials).map((soc) => (
+                  <div
+                    key={soc.id}
+                    onClick={() => {
+                      try {
+                        const idx = (portfolioData.socials || defaultPortfolioData.socials).findIndex(s => s.id === soc.id);
+                        if (idx !== -1) {
+                          const updateCountRef = ref(db, `portfolio/socials/${idx}/clickCount`);
+                        }
+                      } catch (e) {
+                        console.log("Analytics update ignored.");
+                      }
+                      window.open(soc.url, "_blank", "referrer");
+                    }}
+                    className="group relative cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-5 hover:bg-white/[0.04] hover:border-cyan-500/35 transition-all duration-300 shadow-lg text-center flex flex-col justify-between h-48 backdrop-blur-md"
+                  >
+                    <div className="space-y-4">
+                      <div className="mx-auto w-12 h-12 flex items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 group-hover:border-cyan-500/40 transition-all duration-300">
+                        <DynamicLucideIcon name={soc.icon || "Facebook"} className="h-6 w-6 text-cyan-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-white tracking-tight leading-none group-hover:text-cyan-300 transition-colors">
+                          {soc.platform}
+                        </h3>
+                        <p className="text-[10px] text-gray-400 leading-tight mt-2 line-clamp-2">
+                          {soc.titleEn}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-gray-500 font-bold uppercase group-hover:text-cyan-400 transition-colors">
+                      <span>Clicks: {soc.clickCount || 0}</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          </section>
+
+          {/* ================= SECTION 3: INITIATIVES ================= */}
+          <div id="initiatives-section" className={searchPulseSection === "initiatives-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
+            <InitiativesSection 
+              initiatives={portfolioData.initiatives || defaultPortfolioData.initiatives}
+            />
+          </div>
+
+          {/* ================= SECTION 4: USEFUL TOOLS ================= */}
+          <div id="tools-section" className={searchPulseSection === "tools-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
+            <ToolkitSection 
+              tools={portfolioData.tools || defaultPortfolioData.tools}
+            />
+          </div>
+
+          {/* ================= SECTION 5: EDUCATION ================= */}
+          <div id="education-section" className={searchPulseSection === "education-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
+            <EducationSection 
+              education={portfolioData.education || defaultPortfolioData.education}
+            />
+          </div>
+
+          {/* ================= SECTION 6: SERVICES & PASSION PORTAL ================= */}
+          <div id="services-section" className={searchPulseSection === "services-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
+            <ServicesSection 
+              services={portfolioData.services || defaultPortfolioData.services}
+              interests={portfolioData.interests || defaultPortfolioData.interests}
+              logoUrl={portfolioData.header?.logoUrl}
+              faviconUrl={portfolioData.header?.faviconUrl}
+              blogs={portfolioData.blogs?.list || []}
+              onOpenBlogModal={(blog) => {
+                navigateTo(`/blog/${blog.slug || blog.id}`);
+              }}
+            />
+          </div>
+
+          {/* ================= SECTION 7: NATIVE BLOG SECTION (2 BOXES PER ROW) ================= */}
+          {portfolioData.blogs?.active && (
+            <div id="blogs-section" className={searchPulseSection === "blogs-section" ? "ring-4 ring-amber-500 ring-offset-4 ring-offset-black" : ""}>
+              <BlogSection 
+                blogs={portfolioData.blogs?.list || []}
+                onOpenBlogModal={(blog) => {
+                  navigateTo(`/blog/${blog.slug || blog.id}`);
+                }}
+              />
+            </div>
+          )}
+
+          {/* ================= SECTION 8: CONTACT FORM & ADDRESS MAPS ================= */}
+          <div id="contact-section" className={searchPulseSection === "contact-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
+            <ContactForm 
+              permanentMapUrl={portfolioData.maps?.permanentUrl || defaultPortfolioData.maps.permanentUrl}
+              temporaryMapUrl={portfolioData.maps?.temporaryUrl || defaultPortfolioData.maps.temporaryUrl}
+              permanentAddressEn={portfolioData.maps?.permanentAddressEn || defaultPortfolioData.maps.permanentAddressEn}
+              temporaryAddressEn={portfolioData.maps?.temporaryAddressEn || defaultPortfolioData.maps.temporaryAddressEn}
+            />
+          </div>
+        </main>
       )}
-
-      {/* ================= SECTION 8: CONTACT FORM & ADDRESS MAPS ================= */}
-      <div className={searchPulseSection === "contact-section" ? "ring-4 ring-cyan-500 ring-offset-4 ring-offset-black" : ""}>
-        <ContactForm 
-          permanentMapUrl={portfolioData.maps?.permanentUrl || defaultPortfolioData.maps.permanentUrl}
-          temporaryMapUrl={portfolioData.maps?.temporaryUrl || defaultPortfolioData.maps.temporaryUrl}
-          permanentAddressEn={portfolioData.maps?.permanentAddressEn || defaultPortfolioData.maps.permanentAddressEn}
-          temporaryAddressEn={portfolioData.maps?.temporaryAddressEn || defaultPortfolioData.maps.temporaryAddressEn}
-        />
-      </div>
 
       {/* ================= FOOTER ================= */}
       <footer className={`py-16 border-t relative z-10 transition-colors ${

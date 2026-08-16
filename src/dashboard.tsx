@@ -14,6 +14,7 @@ import {
   Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, MessageSquare, Inbox, Phone, FileText, ShieldCheck, AlertCircle, ExternalLink, DownloadCloud, Copy, Check, Filter, Search, Sparkles
 } from "lucide-react";
 import NetworkCanvas from "./components/NetworkCanvas";
+import BlogContentRenderer from "./components/BlogContentRenderer";
 
 import "./index.css";
 
@@ -2015,9 +2016,27 @@ export default function Dashboard() {
                           if (activeLangTab === "en") setBlogForm(prev => ({ ...prev, contentEn: val }));
                           else setBlogForm(prev => ({ ...prev, contentNp: val }));
                         }}
-                        placeholder={activeLangTab === "en" ? "Write or paste article paragraphs, markdown formatting, insights, code snippets..." : "लेखको विस्तृत विवरण लेख्नुहोस्..."}
+                        placeholder={activeLangTab === "en" ? "Write or paste article paragraphs, exact newlines, blank lines, lists, markdown formatting, insights, code snippets..." : "लेखको विस्तृत विवरण लेख्नुहोस्..."}
                         className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500 font-sans text-xs leading-relaxed"
                       />
+
+                      {/* Live Exact User Formatting Preview Box */}
+                      <div className="mt-3 p-4 rounded-xl bg-black/60 border border-cyan-500/20 space-y-2">
+                        <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                          <span className="text-[11px] font-mono font-bold uppercase text-cyan-400 flex items-center space-x-1.5">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            <span>Live Exact Formatting Preview ({activeLangTab.toUpperCase()})</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-gray-500">
+                            Preserves exact newlines, blank lines & lists
+                          </span>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto pr-2 text-xs text-gray-200">
+                          <BlogContentRenderer 
+                            content={activeLangTab === "en" ? blogForm.contentEn : blogForm.contentNp} 
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 

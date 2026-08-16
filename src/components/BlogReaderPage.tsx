@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { BlogPost, BlogType } from "../utils/defaultData";
 import { formatBlogTimestamp, formatBlogLocationDate } from "../utils/date";
+import BlogContentRenderer from "./BlogContentRenderer";
 
 interface BlogReaderPageProps {
   blog: BlogPost;
@@ -246,16 +247,9 @@ export default function BlogReaderPage({
           </div>
         )}
 
-        {/* Main Content Body */}
-        <div className="prose prose-invert max-w-none space-y-6 text-gray-300 text-base md:text-lg leading-relaxed font-sans">
-          {content.split("\n\n").map((para, idx) => {
-            if (!para.trim()) return null;
-            return (
-              <p key={idx} className="leading-relaxed">
-                {para}
-              </p>
-            );
-          })}
+        {/* Main Content Body - Exactly preserving user formatting, newlines, blank lines, and structure */}
+        <div className="text-gray-300 text-base md:text-lg leading-relaxed font-sans">
+          <BlogContentRenderer content={content} />
         </div>
 
         {/* Additional Photos / Artifacts Gallery */}

@@ -464,6 +464,59 @@ export const defaultPortfolioData: PortfolioData = {
         dateNp: "२०८३-०४-२१",
         timeEn: "09:00 AM",
         timeNp: "०९:०० बिहान"
+      },
+      {
+        id: "blog-formatting-test",
+        slug: "my-first-blog",
+        type: "article",
+        titleEn: "My First Blog — Structure & Formatting Verification",
+        titleNp: "मेरो पहिलो ब्लग — संरचना र ढाँचा प्रमाणीकरण",
+        mainPhoto: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1200&auto=format&fit=crop&q=80",
+        additionalPhotos: [],
+        contentEn: `MY FIRST BLOG
+
+This is the first paragraph.
+
+This is the second paragraph.
+
+
+IMPORTANT NOTICE
+
+Please read this carefully.
+
+1. First point
+2. Second point
+3. Third point
+
+
+Thank you,
+
+Amit Joshi`,
+        contentNp: `मेरो पहिलो ब्लग
+
+यो पहिलो अनुच्छेद हो।
+
+यो दोस्रो अनुच्छेद हो।
+
+
+महत्त्वपूर्ण सूचना
+
+कृपया यो ध्यानपूर्वक पढ्नुहोस्।
+
+१. पहिलो बुँदा
+२. दोस्रो बुँदा
+३. तेस्रो बुँदा
+
+
+धन्यवाद,
+
+अमित जोशी`,
+        authorEn: "Amit Joshi",
+        authorNp: "अमित जोशी",
+        dateEn: "2026-08-16",
+        dateNp: "२०८३-०५-०१",
+        timeEn: "04:30 PM",
+        timeNp: "०४:३० दिउँसो"
       }
     ]
   },
