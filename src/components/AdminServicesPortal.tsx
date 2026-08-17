@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { ref, get, set, onValue } from "firebase/database";
+import { ref, get, set, update, onValue } from "firebase/database";
 import { db } from "../firebase";
-import { defaultPortfolioData, PortfolioData, ServiceAdminUser, ServiceInvoice } from "../utils/defaultData";
+import { defaultPortfolioData, PortfolioData, ServiceAdminUser, ServiceInvoice, ServiceItem, ServiceQuestion, ServiceFieldType } from "../utils/defaultData";
 import { 
   Lock, User, Key, MessageSquare, Inbox, Phone, Mail, 
   Trash2, CheckCircle2, Clock, FileText, Image as ImageIcon, 
   Search, ShieldCheck, LogOut, RefreshCw, AlertCircle, Sparkles, 
   Filter, Users, Copy, Check, DownloadCloud, ArrowUpDown, Send,
-  Receipt, DollarSign, Calendar, Plus, Edit2, Shield, UserPlus, Eye
+  Receipt, DollarSign, Calendar, Plus, Edit2, Shield, UserPlus, Eye,
+  Sliders, Settings, ArrowUp, ArrowDown, ExternalLink, HelpCircle,
+  X, CheckSquare, ListPlus, Printer, AlertTriangle
 } from "lucide-react";
 import InvoiceView from "./InvoiceView";
 
@@ -34,15 +36,24 @@ export default function AdminServicesPortal() {
   const [applications, setApplications] = useState<any[]>([]);
   const [subscribers, setSubscribers] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<ServiceInvoice[]>([]);
-  const [activeTab, setActiveTab] = useState<"applications" | "invoices" | "suggestions" | "subscribers" | "rbac">("applications");
+  const [activeTab, setActiveTab] = useState<"services" | "applications" | "invoices" | "suggestions" | "subscribers" | "rbac">("services");
   
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [viewingInvoice, setViewingInvoice] = useState<ServiceInvoice | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [toastMsg, setToastMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const [bulkCopySuccess, setBulkCopySuccess] = useState(false);
+
+  // Service Builder State
+  const [editingService, setEditingService] = useState<ServiceItem | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<ServiceQuestion | null>(null);
+  const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState(false);
 
   // RBAC User Form state
   const [isEditingUser, setIsEditingUser] = useState(false);
@@ -54,16 +65,20 @@ export default function AdminServicesPortal() {
     role: "services_admin",
     status: "active",
     permissions: {
-      canManageServices: true,
-      canManageApplications: true,
-      canManageInvoices: true,
-      canManageSuggestions: true,
-      canManageSubscribers: true,
-      canManageUsers: false
+      serviceRequests: true,
+      suggestions: true,
+      newsletter: true,
+      serviceConfiguration: true,
+      billing: true
     }
   });
 
-  // Fetch portfolio data and allowed service admin users
+  const showToast = (text: string, type: "success" | "error" = "success") => {
+    setToastMsg({ text, type });
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  // Fetch portfolio data from Firebase
   useEffect(() => {
     const portfolioRef = ref(db, "portfolio");
     const unsubscribe = onValue(portfolioRef, (snapshot) => {
@@ -72,6 +87,7 @@ export default function AdminServicesPortal() {
         setPortfolioData({
           ...defaultPortfolioData,
           ...val,
+          services: val.services || defaultPortfolioData.services,
           serviceAdminUsers: val.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers
         });
       }
@@ -110,7 +126,7 @@ export default function AdminServicesPortal() {
           }
         });
       }
-      appList.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+      appList.sort((a, b) => new Date(b.submittedAt || b.timestamp || 0).getTime() - new Date(a.submittedAt || a.timestamp || 0).getTime());
       setApplications(appList);
 
       // 3. Invoices
@@ -139,18 +155,7 @@ export default function AdminServicesPortal() {
           }
         });
       }
-      const localSubsStr = localStorage.getItem("newsletter_subscribers");
-      if (localSubsStr) {
-        try {
-          const localSubs: any[] = JSON.parse(localSubsStr);
-          localSubs.forEach(ls => {
-            if (!subsList.some(s => (s.email && ls.email && s.email.toLowerCase() === ls.email.toLowerCase()) || s.id === ls.id)) {
-              subsList.push(ls);
-            }
-          });
-        } catch (e) {}
-      }
-      subsList.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+      subsList.sort((a, b) => new Date(b.subscribedAt || b.timestamp || 0).getTime() - new Date(a.subscribedAt || a.timestamp || 0).getTime());
       setSubscribers(subsList);
     } catch (err) {
       console.error("Error loading services data:", err);
@@ -162,14 +167,11 @@ export default function AdminServicesPortal() {
   useEffect(() => {
     if (isLoggedIn) {
       fetchData();
-
       const unsubSubs = onValue(ref(db, "subscribers"), () => fetchData());
       const unsubPortSubs = onValue(ref(db, "portfolio/subscribers"), () => fetchData());
       const unsubApps = onValue(ref(db, "service_applications"), () => fetchData());
       const unsubInvs = onValue(ref(db, "invoices"), () => fetchData());
       const unsubSugs = onValue(ref(db, "suggestions"), () => fetchData());
-
-      const interval = setInterval(fetchData, 10000);
 
       return () => {
         unsubSubs();
@@ -177,7 +179,6 @@ export default function AdminServicesPortal() {
         unsubApps();
         unsubInvs();
         unsubSugs();
-        clearInterval(interval);
       };
     }
   }, [isLoggedIn]);
@@ -206,12 +207,11 @@ export default function AdminServicesPortal() {
         role: "super_admin",
         status: "active",
         permissions: {
-          canManageServices: true,
-          canManageApplications: true,
-          canManageInvoices: true,
-          canManageSuggestions: true,
-          canManageSubscribers: true,
-          canManageUsers: true
+          serviceRequests: true,
+          suggestions: true,
+          newsletter: true,
+          serviceConfiguration: true,
+          billing: true
         }
       };
 
@@ -235,24 +235,285 @@ export default function AdminServicesPortal() {
     sessionStorage.removeItem("admin_services_user");
   };
 
-  // Update Invoice Status
-  const handleUpdateInvoiceStatus = async (invoiceId: string, status: ServiceInvoice["paymentStatus"]) => {
+  // ----------------------------------------------------
+  // SERVICE & DYNAMIC QUESTIONS BUILDER HANDLERS
+  // ----------------------------------------------------
+  const handleSaveAllServices = async (updatedServices: ServiceItem[]) => {
     try {
-      await set(ref(db, `invoices/${invoiceId}/paymentStatus`), status);
-      fetchData();
-      if (viewingInvoice && viewingInvoice.invoiceId === invoiceId) {
-        setViewingInvoice(prev => prev ? { ...prev, paymentStatus: status } : null);
-      }
-    } catch (e) {
-      alert("Failed to update invoice status: " + e);
+      await set(ref(db, "portfolio/services"), updatedServices);
+      setPortfolioData(prev => ({ ...prev, services: updatedServices }));
+      showToast("Services & Questions updated successfully!");
+    } catch (e: any) {
+      console.error(e);
+      showToast("Failed to save services: " + e.message, "error");
     }
   };
 
-  // Save / Update Admin User (RBAC)
+  const handleCreateNewService = () => {
+    const newService: ServiceItem = {
+      id: `serv-${Date.now().toString(36)}`,
+      titleEn: "New Professional Service",
+      titleNp: "नयाँ व्यावसायिक सेवा",
+      descriptionEn: "Comprehensive solution designed for optimal performance, high security, and fast turnaround.",
+      descriptionNp: "उत्कृष्ट कार्यसम्पादन, उच्च सुरक्षा र द्रुत सेवाका लागि डिजाइन गरिएको पूर्ण समाधान।",
+      priceEn: "NPR 5,000",
+      priceNp: "रु ५,०००",
+      whatsappMessageEn: "Hello Amit, I would like to inquire about the service.",
+      whatsappMessageNp: "नमस्कार अमित, म यस सेवाको बारेमा सोधपुछ गर्न चाहन्छु।",
+      officialLink: "https://amitjoshi.info.np/services",
+      icon: "FileText",
+      questions: [
+        {
+          id: `q-${Date.now()}-1`,
+          order: 1,
+          labelEn: "Full Legal Name",
+          labelNp: "पूरा नाम",
+          fieldType: "short_text",
+          required: true,
+          placeholder: "e.g. Ram Prasad Sharma",
+          helpText: "Applicant's official full name"
+        },
+        {
+          id: `q-${Date.now()}-2`,
+          order: 2,
+          labelEn: "Contact Phone / Mobile",
+          labelNp: "सम्पर्क फोन / मोबाइल",
+          fieldType: "phone",
+          required: true,
+          placeholder: "98XXXXXXXX",
+          helpText: "Primary phone for WhatsApp and SMS updates"
+        },
+        {
+          id: `q-${Date.now()}-3`,
+          order: 3,
+          labelEn: "Email Address",
+          labelNp: "इमेल ठेगाना",
+          fieldType: "email",
+          required: true,
+          placeholder: "client@example.com",
+          helpText: "For digital invoice and receipt delivery"
+        }
+      ]
+    };
+
+    setEditingService(newService);
+    setIsNewServiceModalOpen(true);
+  };
+
+  const handleSaveServiceForm = async (serviceToSave: ServiceItem) => {
+    const currentServices = [...(portfolioData.services || defaultPortfolioData.services)];
+    const existingIndex = currentServices.findIndex(s => s.id === serviceToSave.id);
+
+    if (existingIndex >= 0) {
+      currentServices[existingIndex] = serviceToSave;
+    } else {
+      currentServices.push(serviceToSave);
+    }
+
+    await handleSaveAllServices(currentServices);
+    setEditingService(null);
+    setIsNewServiceModalOpen(false);
+  };
+
+  const handleDeleteService = async (serviceId: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this service and all its configured questions?")) return;
+    const updated = (portfolioData.services || defaultPortfolioData.services).filter(s => s.id !== serviceId);
+    await handleSaveAllServices(updated);
+    if (editingService?.id === serviceId) setEditingService(null);
+  };
+
+  // Add Question to currently editing service
+  const handleAddQuestionToService = (fieldType: ServiceFieldType = "short_text") => {
+    if (!editingService) return;
+    const currentQuestions = editingService.questions ? [...editingService.questions] : [];
+    const newOrder = currentQuestions.length + 1;
+    
+    const newQ: ServiceQuestion = {
+      id: `q-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      order: newOrder,
+      labelEn: fieldType === "image_upload" ? "Upload Photo / Image" : fieldType === "file_upload" ? "Upload Document (PDF)" : "Question Label",
+      labelNp: fieldType === "image_upload" ? "फोटो / छवि अपलोड गर्नुहोस्" : fieldType === "file_upload" ? "कागजात अपलोड गर्नुहोस्" : "प्रश्नको विवरण",
+      fieldType: fieldType,
+      required: true,
+      placeholder: "",
+      helpText: "",
+      options: (fieldType === "dropdown" || fieldType === "radio" || fieldType === "checkbox") ? ["Option 1", "Option 2"] : undefined,
+      maxImages: fieldType === "image_upload" ? 4 : undefined,
+      allowedFileTypes: fieldType === "image_upload" ? ["jpg", "jpeg", "png", "webp"] : fieldType === "file_upload" ? ["pdf", "jpg", "png"] : undefined
+    };
+
+    const updatedQuestions = [...currentQuestions, newQ];
+    setEditingService({ ...editingService, questions: updatedQuestions });
+    setEditingQuestion(newQ);
+  };
+
+  const handleUpdateQuestion = (updatedQ: ServiceQuestion) => {
+    if (!editingService || !editingService.questions) return;
+    const updatedQuestions = editingService.questions.map(q => q.id === updatedQ.id ? updatedQ : q);
+    setEditingService({ ...editingService, questions: updatedQuestions });
+    setEditingQuestion(null);
+  };
+
+  const handleDeleteQuestion = (questionId: string) => {
+    if (!editingService || !editingService.questions) return;
+    const filtered = editingService.questions
+      .filter(q => q.id !== questionId)
+      .map((q, idx) => ({ ...q, order: idx + 1 }));
+    setEditingService({ ...editingService, questions: filtered });
+    if (editingQuestion?.id === questionId) setEditingQuestion(null);
+  };
+
+  const handleMoveQuestion = (index: number, direction: "up" | "down") => {
+    if (!editingService || !editingService.questions) return;
+    const list = [...editingService.questions];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+
+    const temp = list[index];
+    list[index] = list[targetIndex];
+    list[targetIndex] = temp;
+
+    const reordered = list.map((q, idx) => ({ ...q, order: idx + 1 }));
+    setEditingService({ ...editingService, questions: reordered });
+  };
+
+  // ----------------------------------------------------
+  // APPLICATION & STATUS HANDLERS
+  // ----------------------------------------------------
+  const handleUpdateApplicationStatus = async (appId: string, status: string, remarks?: string) => {
+    try {
+      const updates: any = {
+        status,
+        updatedAt: new Date().toISOString()
+      };
+      if (remarks !== undefined) updates.remarks = remarks;
+
+      await update(ref(db, `service_applications/${appId}`), updates);
+      showToast(`Status updated to "${status}" for ${appId}`);
+      fetchData();
+      if (selectedItem && selectedItem.id === appId) {
+        setSelectedItem((prev: any) => ({ ...prev, ...updates }));
+      }
+    } catch (e: any) {
+      showToast("Failed to update status: " + e.message, "error");
+    }
+  };
+
+  const handleUpdatePaymentStatus = async (appId: string, paymentStatus: "Pending" | "Paid" | "Expired" | "Cancelled" | "Failed", paymentReference?: string) => {
+    try {
+      const updates: any = {
+        paymentStatus,
+        paymentUpdatedAt: new Date().toISOString()
+      };
+      if (paymentStatus === "Paid") {
+        updates.paidAt = new Date().toISOString();
+        if (paymentReference) updates.paymentReference = paymentReference;
+      }
+
+      await update(ref(db, `service_applications/${appId}`), updates);
+      
+      // Also sync corresponding invoice if exists
+      const invId = `INV-${appId}`;
+      await update(ref(db, `invoices/${invId}`), updates).catch(() => {});
+
+      showToast(`Payment marked as "${paymentStatus}" for ${appId}`);
+      fetchData();
+      if (selectedItem && selectedItem.id === appId) {
+        setSelectedItem((prev: any) => ({ ...prev, ...updates }));
+      }
+    } catch (e: any) {
+      showToast("Failed to update payment: " + e.message, "error");
+    }
+  };
+
+  const handleToggleEditAccess = async (appId: string, currentVal: boolean) => {
+    try {
+      await update(ref(db, `service_applications/${appId}`), { allowEdit: !currentVal });
+      showToast(!currentVal ? "User Edit Access ENABLED." : "User Edit Access DISABLED.");
+      fetchData();
+      if (selectedItem && selectedItem.id === appId) {
+        setSelectedItem((prev: any) => ({ ...prev, allowEdit: !currentVal }));
+      }
+    } catch (e: any) {
+      showToast("Failed to toggle access: " + e.message, "error");
+    }
+  };
+
+  const handleDeleteItem = async (type: "applications" | "suggestions" | "subscribers" | "invoices", id: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete this ${type.slice(0, -1)}?`)) return;
+    try {
+      if (type === "subscribers") {
+        await set(ref(db, `subscribers/${id}`), null);
+        await set(ref(db, `portfolio/subscribers/${id}`), null);
+      } else if (type === "applications") {
+        await set(ref(db, `service_applications/${id}`), null);
+        await set(ref(db, `applications/${id}`), null);
+        await set(ref(db, `invoices/INV-${id}`), null).catch(() => {});
+      } else if (type === "invoices") {
+        await set(ref(db, `invoices/${id}`), null);
+      } else {
+        await set(ref(db, `suggestions/${id}`), null);
+      }
+      
+      if (selectedItem?.id === id) setSelectedItem(null);
+      showToast("Record deleted.");
+      fetchData();
+    } catch (e: any) {
+      showToast("Failed to delete item: " + e.message, "error");
+    }
+  };
+
+  // ----------------------------------------------------
+  // NEWSLETTER HELPERS
+  // ----------------------------------------------------
+  const handleCopyAllSubscriberEmails = () => {
+    const emails = subscribers.map(s => s.email).filter(Boolean).join(", ");
+    if (!emails) {
+      showToast("No emails to copy.", "error");
+      return;
+    }
+    navigator.clipboard.writeText(emails);
+    setBulkCopySuccess(true);
+    setTimeout(() => setBulkCopySuccess(false), 3000);
+    showToast(`Copied ${subscribers.length} subscriber emails!`);
+  };
+
+  const handleExportSubscribersCSV = () => {
+    if (subscribers.length === 0) {
+      showToast("No subscribers to export.", "error");
+      return;
+    }
+    const headers = ["ID", "Name", "Email", "Subscribed Date & Time", "Status"];
+    const rows = subscribers.map(s => [
+      `"${s.id || ""}"`,
+      `"${(s.name || "").replace(/"/g, '""')}"`,
+      `"${(s.email || "").replace(/"/g, '""')}"`,
+      `"${(s.subscribedAt || s.timestamp || "").replace(/"/g, '""')}"`,
+      `"${(s.status || "active").replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `subscribers_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("CSV file generated and downloaded.");
+  };
+
+  // ----------------------------------------------------
+  // RBAC USER MANAGEMENT
+  // ----------------------------------------------------
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userForm.username.trim() || !userForm.pin.trim() || !userForm.name.trim()) {
-      alert("Please fill in username, full name, and 4-digit PIN.");
+      showToast("Please fill in username, full name, and 4-digit PIN.", "error");
+      return;
+    }
+    if (userForm.pin.trim().length !== 4 || !/^\d{4}$/.test(userForm.pin.trim())) {
+      showToast("PIN must be exactly 4 digits.", "error");
       return;
     }
 
@@ -261,7 +522,9 @@ export default function AdminServicesPortal() {
 
     const userToSave: ServiceAdminUser = {
       ...userForm,
-      id: userForm.id || `user-${Date.now()}`
+      username: userForm.username.trim().toLowerCase(),
+      pin: userForm.pin.trim(),
+      id: userForm.id || `sau-${Date.now()}`
     };
 
     if (existingIndex >= 0) {
@@ -273,145 +536,103 @@ export default function AdminServicesPortal() {
     try {
       await set(ref(db, "portfolio/serviceAdminUsers"), currentUsers);
       setIsEditingUser(false);
-      alert("Admin user saved successfully!");
-    } catch (e) {
-      alert("Failed to save user: " + e);
+      showToast("Admin account saved successfully!");
+    } catch (e: any) {
+      showToast("Failed to save admin user: " + e.message, "error");
     }
   };
 
-  // Delete Admin User (RBAC)
   const handleDeleteUser = async (userId: string) => {
-    if (!window.confirm("Are you sure you want to delete this admin account?")) return;
-    const currentUsers = (portfolioData.serviceAdminUsers || []).filter(u => u.id !== userId);
-    try {
-      await set(ref(db, "portfolio/serviceAdminUsers"), currentUsers);
-      alert("User removed.");
-    } catch (e) {
-      alert("Failed to delete user: " + e);
-    }
-  };
-
-  // Delete Item
-  const handleDeleteItem = async (type: "applications" | "suggestions" | "subscribers" | "invoices", id: string) => {
-    if (!window.confirm(`Are you sure you want to delete this item?`)) return;
-    try {
-      if (type === "subscribers") {
-        await set(ref(db, `subscribers/${id}`), null);
-        await set(ref(db, `portfolio/subscribers/${id}`), null);
-      } else if (type === "applications") {
-        await set(ref(db, `service_applications/${id}`), null);
-        await set(ref(db, `applications/${id}`), null);
-      } else if (type === "invoices") {
-        await set(ref(db, `invoices/${id}`), null);
-      } else {
-        await set(ref(db, `suggestions/${id}`), null);
-      }
-      
-      if (selectedItem?.id === id) setSelectedItem(null);
-      fetchData();
-    } catch (e) {
-      alert("Failed to delete item: " + e);
-    }
-  };
-
-  // Toggle Read Status
-  const handleToggleRead = async (type: "applications" | "suggestions", id: string, currentRead: boolean) => {
-    try {
-      if (type === "applications") {
-        await set(ref(db, `service_applications/${id}/isRead`), !currentRead);
-        await set(ref(db, `applications/${id}/isRead`), !currentRead);
-      } else {
-        await set(ref(db, `suggestions/${id}/isRead`), !currentRead);
-      }
-      fetchData();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleCopyEmail = (email: string) => {
-    navigator.clipboard.writeText(email);
-    setCopiedEmail(email);
-    setTimeout(() => setCopiedEmail(null), 2500);
-  };
-
-  const handleCopyAllSubscriberEmails = () => {
-    const emails = subscribers.map(s => s.email).filter(Boolean).join(", ");
-    if (!emails) return;
-    navigator.clipboard.writeText(emails);
-    setBulkCopySuccess(true);
-    setTimeout(() => setBulkCopySuccess(false), 3000);
-  };
-
-  const handleExportSubscribersCSV = () => {
-    if (subscribers.length === 0) {
-      alert("No subscribers to export.");
+    const currentUsers = portfolioData.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers;
+    if (currentUsers.length <= 1) {
+      showToast("Cannot delete the only admin user.", "error");
       return;
     }
-    const headers = ["ID", "Name", "Email", "Subscribed Date & Time", "Status"];
-    const rows = subscribers.map(s => [
-      `"${s.id || ""}"`,
-      `"${(s.name || "").replace(/"/g, '""')}"`,
-      `"${(s.email || "").replace(/"/g, '""')}"`,
-      `"${(s.subscribedAt || "").replace(/"/g, '""')}"`,
-      `"${(s.status || "active").replace(/"/g, '""')}"`
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `newsletter_subscribers_${new Date().toISOString().split("T")[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!window.confirm("Are you sure you want to delete this admin account?")) return;
+    const updated = currentUsers.filter(u => u.id !== userId);
+    try {
+      await set(ref(db, "portfolio/serviceAdminUsers"), updated);
+      showToast("User removed.");
+    } catch (e: any) {
+      showToast("Failed to delete user: " + e.message, "error");
+    }
   };
 
-  // Filtered lists
+  // ----------------------------------------------------
+  // FILTERING
+  // ----------------------------------------------------
   const filteredApplications = applications.filter((app) => {
     const q = searchTerm.toLowerCase();
-    return (
-      app.name?.toLowerCase().includes(q) ||
-      app.fullName?.toLowerCase().includes(q) ||
-      app.contact?.toLowerCase().includes(q) ||
-      app.phone?.toLowerCase().includes(q) ||
-      app.serviceTitle?.toLowerCase().includes(q) ||
-      app.email?.toLowerCase().includes(q)
-    );
+    const matchesSearch = 
+      (app.id || "").toLowerCase().includes(q) ||
+      (app.name || "").toLowerCase().includes(q) ||
+      (app.fullName || "").toLowerCase().includes(q) ||
+      (app.contact || "").toLowerCase().includes(q) ||
+      (app.phone || "").toLowerCase().includes(q) ||
+      (app.serviceTitle || "").toLowerCase().includes(q) ||
+      (app.email || "").toLowerCase().includes(q);
+
+    const matchesStatus = statusFilter === "all" || (app.status || "Submitted").toLowerCase() === statusFilter.toLowerCase();
+    const matchesPayment = paymentFilter === "all" || (app.paymentStatus || "Pending").toLowerCase() === paymentFilter.toLowerCase();
+
+    return matchesSearch && matchesStatus && matchesPayment;
   });
 
   const filteredInvoices = invoices.filter((inv) => {
     const q = searchTerm.toLowerCase();
-    return (
-      inv.invoiceId?.toLowerCase().includes(q) ||
-      inv.clientName?.toLowerCase().includes(q) ||
-      inv.clientEmail?.toLowerCase().includes(q) ||
-      inv.serviceTitle?.toLowerCase().includes(q) ||
-      inv.paymentStatus?.toLowerCase().includes(q)
-    );
+    const matchesSearch = 
+      (inv.invoiceId || "").toLowerCase().includes(q) ||
+      (inv.submissionId || "").toLowerCase().includes(q) ||
+      (inv.clientName || "").toLowerCase().includes(q) ||
+      (inv.clientEmail || "").toLowerCase().includes(q) ||
+      (inv.clientPhone || "").toLowerCase().includes(q) ||
+      (inv.serviceTitle || "").toLowerCase().includes(q);
+
+    const matchesPayment = paymentFilter === "all" || (inv.paymentStatus || "Pending").toLowerCase() === paymentFilter.toLowerCase();
+
+    return matchesSearch && matchesPayment;
   });
 
   const filteredSuggestions = suggestions.filter((sug) => {
     const q = searchTerm.toLowerCase();
     return (
-      sug.name?.toLowerCase().includes(q) ||
-      sug.contact?.toLowerCase().includes(q) ||
-      sug.message?.toLowerCase().includes(q)
+      (sug.name || "").toLowerCase().includes(q) ||
+      (sug.contact || "").toLowerCase().includes(q) ||
+      (sug.email || "").toLowerCase().includes(q) ||
+      (sug.message || "").toLowerCase().includes(q)
     );
   });
 
   const filteredSubscribers = subscribers.filter((sub) => {
     const q = searchTerm.toLowerCase();
     return (
-      sub.name?.toLowerCase().includes(q) ||
-      sub.email?.toLowerCase().includes(q) ||
-      sub.subscribedAt?.toLowerCase().includes(q)
+      (sub.name || "").toLowerCase().includes(q) ||
+      (sub.email || "").toLowerCase().includes(q)
     );
   });
 
-  const unreadAppsCount = applications.filter(a => !a.isRead).length;
-  const unreadSugsCount = suggestions.filter(s => !s.isRead).length;
+  // Calculate 12-Hour Status Helper
+  const getDeadlineInfo = (dueAtStr?: string, paymentStatus?: string) => {
+    if (paymentStatus === "Paid") {
+      return { text: "Paid & Verified", isExpired: false, isPaid: true };
+    }
+    if (!dueAtStr) return { text: "Standard Processing", isExpired: false, isPaid: false };
 
+    const dueTime = new Date(dueAtStr).getTime();
+    const diff = dueTime - Date.now();
+
+    if (diff <= 0) {
+      return { text: "12h Window Expired / Overdue", isExpired: true, isPaid: false };
+    }
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return { text: `${hours}h ${minutes}m remaining`, isExpired: false, isPaid: false };
+  };
+
+  // ----------------------------------------------------
+  // LOGIN SCREEN
+  // ----------------------------------------------------
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 text-amber-50 flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
@@ -424,10 +645,10 @@ export default function AdminServicesPortal() {
               <ShieldCheck className="w-8 h-8" />
             </div>
             <h1 className="text-2xl font-bold font-serif text-white tracking-wide">
-              Services & Billing Portal
+              Services & Submissions Portal
             </h1>
             <p className="text-xs text-amber-300/80 mt-1 uppercase tracking-widest font-mono">
-              Restricted Executive Management Panel
+              Centralized Services & Questions Architecture
             </p>
           </div>
 
@@ -469,7 +690,7 @@ export default function AdminServicesPortal() {
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
                   placeholder="••••"
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none transition-all text-center text-lg font-mono"
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none transition-all text-center text-lg font-mono tracking-widest"
                 />
               </div>
             </div>
@@ -478,7 +699,7 @@ export default function AdminServicesPortal() {
               type="submit"
               className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer font-mono"
             >
-              Authenticate Service Portal
+              Authenticate & Enter Portal
             </button>
           </form>
 
@@ -502,29 +723,70 @@ export default function AdminServicesPortal() {
         <InvoiceView
           invoice={viewingInvoice}
           onBack={() => setViewingInvoice(null)}
-          onUpdateStatus={(newStatus) => handleUpdateInvoiceStatus(viewingInvoice.invoiceId, newStatus)}
+          onUpdateStatus={(newStatus) => {
+            handleUpdatePaymentStatus(viewingInvoice.submissionId, newStatus);
+            setViewingInvoice(prev => prev ? { ...prev, paymentStatus: newStatus } : null);
+          }}
           isAdmin={true}
         />
       </div>
     );
   }
 
+  const allServices = portfolioData.services || defaultPortfolioData.services || [];
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col">
+      
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl border shadow-2xl flex items-center gap-2.5 font-mono text-xs font-bold animate-in slide-in-from-top-4 duration-300 ${
+          toastMsg.type === "success" 
+            ? "bg-emerald-950/95 border-emerald-500/50 text-emerald-300 shadow-emerald-500/20" 
+            : "bg-rose-950/95 border-rose-500/50 text-rose-300 shadow-rose-500/20"
+        }`}>
+          {toastMsg.type === "success" ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <AlertCircle className="h-4 w-4 text-rose-400" />}
+          <span>{toastMsg.text}</span>
+        </div>
+      )}
+
+      {/* Lightbox Modal */}
+      {lightboxImage && (
+        <div 
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 border border-white/20 rounded-2xl overflow-hidden p-2">
+            <img 
+              src={lightboxImage} 
+              alt="Full Preview" 
+              className="max-h-[85vh] max-w-full object-contain rounded-xl"
+              referrerPolicy="no-referrer"
+            />
+            <button 
+              onClick={() => setLightboxImage(null)}
+              className="absolute top-4 right-4 p-2 bg-black/70 hover:bg-black text-white rounded-full transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header Bar */}
       <header className="bg-slate-900 border-b border-amber-500/30 px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30 shadow-xl">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400">
-            <Inbox className="w-5 h-5" />
+            <Shield className="w-5 h-5" />
           </div>
           <div>
             <h1 className="text-lg font-bold font-serif text-white">
-              Admin Services & Submissions Portal
+              ServicesAdmin Central Command
             </h1>
             <p className="text-xs text-amber-400/80 font-mono">
               Logged in as: <span className="font-bold text-white">{currentUserInfo?.name || currentUserInfo?.username || "loginadmin"}</span>
               <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[10px] uppercase font-bold border border-amber-500/30">
-                {currentUserInfo?.role || "Services Admin"}
+                {currentUserInfo?.role || "Super Admin"}
               </span>
             </p>
           </div>
@@ -564,6 +826,18 @@ export default function AdminServicesPortal() {
         <div className="flex flex-wrap p-1.5 bg-slate-900 border border-slate-800 rounded-2xl gap-1 shadow-lg overflow-x-auto">
           
           <button
+            onClick={() => { setActiveTab("services"); setSelectedItem(null); }}
+            className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === "services"
+                ? "bg-amber-500 text-slate-950 shadow-lg"
+                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            <span>Service & Questions Builder ({allServices.length})</span>
+          </button>
+
+          <button
             onClick={() => { setActiveTab("applications"); setSelectedItem(null); }}
             className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === "applications"
@@ -572,12 +846,7 @@ export default function AdminServicesPortal() {
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Applications ({applications.length})</span>
-            {unreadAppsCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-red-600 text-white font-bold">
-                {unreadAppsCount}
-              </span>
-            )}
+            <span>Submissions ({applications.length})</span>
           </button>
 
           <button
@@ -589,7 +858,7 @@ export default function AdminServicesPortal() {
             }`}
           >
             <Receipt className="w-4 h-4" />
-            <span>Invoices & Billing ({invoices.length})</span>
+            <span>Invoices & 12h Billing ({invoices.length})</span>
           </button>
 
           <button
@@ -601,12 +870,7 @@ export default function AdminServicesPortal() {
             }`}
           >
             <MessageSquare className="w-4 h-4" />
-            <span>Suggestions ({suggestions.length})</span>
-            {unreadSugsCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-red-600 text-white font-bold">
-                {unreadSugsCount}
-              </span>
-            )}
+            <span>Suggestions & Feedback ({suggestions.length})</span>
           </button>
 
           <button
@@ -618,162 +882,1208 @@ export default function AdminServicesPortal() {
             }`}
           >
             <Mail className="w-4 h-4" />
-            <span>Newsletter ({subscribers.length})</span>
+            <span>Newsletter Subscribers ({subscribers.length})</span>
           </button>
 
-          {/* RBAC Tab (Visible to super_admin or user with canManageUsers) */}
-          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.canManageUsers) && (
-            <button
-              onClick={() => { setActiveTab("rbac"); setSelectedItem(null); }}
-              className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                activeTab === "rbac"
-                  ? "bg-amber-500 text-slate-950 shadow-lg"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              <span>RBAC User Roles</span>
-            </button>
-          )}
-
+          <button
+            onClick={() => { setActiveTab("rbac"); setSelectedItem(null); }}
+            className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === "rbac"
+                ? "bg-amber-500 text-slate-950 shadow-lg"
+                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Admin Users & PINs</span>
+          </button>
         </div>
 
-        {/* ================= INVOICES & BILLING TAB ================= */}
-        {activeTab === "invoices" && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        {/* ---------------------------------------------------- */}
+        {/* TAB 1: DYNAMIC SERVICE & QUESTIONS BUILDER */}
+        {/* ---------------------------------------------------- */}
+        {activeTab === "services" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
                 <h2 className="text-xl font-bold font-serif text-white flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-amber-400" />
-                  <span>Official Invoices & 12-Hour Payment Trackers</span>
+                  <Sliders className="w-5 h-5 text-amber-400" />
+                  <span>Dynamic Services & Question Form Builder</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-1 font-mono">
-                  All dynamically generated client invoices with strict 12-hour payment window monitoring.
+                <p className="text-xs text-slate-400 font-mono mt-1">
+                  Configure services and build dynamic, database-driven intake questions. Changes immediately reflect on the live frontend form.
                 </p>
               </div>
 
-              <div className="relative max-w-xs w-full">
-                <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+              <button
+                onClick={handleCreateNewService}
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 flex items-center gap-2 cursor-pointer transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New Service</span>
+              </button>
+            </div>
+
+            {/* Editing Service Modal / View */}
+            {editingService ? (
+              <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-[10px] font-mono font-bold uppercase text-amber-400">
+                      Service Configuration Studio
+                    </span>
+                    <h3 className="text-lg font-bold text-white font-serif">
+                      {editingService.titleEn || "Configure Service"}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => { setEditingService(null); setEditingQuestion(null); }}
+                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Core Service Info Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Service Title (English) *</label>
+                    <input
+                      type="text"
+                      value={editingService.titleEn}
+                      onChange={(e) => setEditingService({ ...editingService, titleEn: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Service Title (Nepali)</label>
+                    <input
+                      type="text"
+                      value={editingService.titleNp}
+                      onChange={(e) => setEditingService({ ...editingService, titleNp: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Price Format (English) *</label>
+                    <input
+                      type="text"
+                      value={editingService.priceEn}
+                      onChange={(e) => setEditingService({ ...editingService, priceEn: e.target.value })}
+                      placeholder="e.g. NPR 15,000"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Price Format (Nepali)</label>
+                    <input
+                      type="text"
+                      value={editingService.priceNp}
+                      onChange={(e) => setEditingService({ ...editingService, priceNp: e.target.value })}
+                      placeholder="e.g. रु १५,०००"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-gray-400 uppercase font-bold">Description (English) *</label>
+                    <textarea
+                      rows={2}
+                      value={editingService.descriptionEn}
+                      onChange={(e) => setEditingService({ ...editingService, descriptionEn: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-gray-400 uppercase font-bold">Description (Nepali)</label>
+                    <textarea
+                      rows={2}
+                      value={editingService.descriptionNp}
+                      onChange={(e) => setEditingService({ ...editingService, descriptionNp: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">WhatsApp Inquire Message (English)</label>
+                    <input
+                      type="text"
+                      value={editingService.whatsappMessageEn || ""}
+                      onChange={(e) => setEditingService({ ...editingService, whatsappMessageEn: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Icon Identifier</label>
+                    <input
+                      type="text"
+                      value={editingService.icon || "FileText"}
+                      onChange={(e) => setEditingService({ ...editingService, icon: e.target.value })}
+                      placeholder="e.g. Layout, ShieldAlert, FileText, Landmark"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Dynamic Questions Builder Header */}
+                <div className="pt-4 border-t border-slate-800 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/40 p-4 rounded-2xl border border-amber-500/20">
+                    <div>
+                      <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <ListPlus className="w-4 h-4" />
+                        <span>Dynamic Questions for this Service ({(editingService.questions || []).length})</span>
+                      </h4>
+                      <p className="text-[11px] text-gray-400 font-mono mt-0.5">
+                        Define any text fields, numbers, dropdown options, and photo/document uploads required for this service.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleAddQuestionToService("short_text")}
+                        className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-amber-400" />
+                        <span>+ Text Field</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAddQuestionToService("dropdown")}
+                        className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-amber-400" />
+                        <span>+ Dropdown</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAddQuestionToService("image_upload")}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                        <span>+ Image Upload</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAddQuestionToService("file_upload")}
+                        className="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>+ Document (PDF)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Questions List */}
+                  {(!editingService.questions || editingService.questions.length === 0) ? (
+                    <div className="p-8 text-center bg-black/20 rounded-2xl border border-dashed border-white/10 text-gray-400 font-mono text-xs">
+                      No custom questions created yet. The service will use default intake fields. Click "+ Text Field" or "+ Image Upload" to add custom questions.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {editingService.questions.map((q, idx) => (
+                        <div
+                          key={q.id || idx}
+                          className="bg-slate-950 border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-amber-500/30 transition-all"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 font-mono text-xs font-bold flex items-center justify-center shrink-0 border border-amber-500/30">
+                              {idx + 1}
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-white text-sm font-sans">{q.labelEn}</span>
+                                {q.required ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30">
+                                    Required
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-white/5 text-gray-400 border border-white/10">
+                                    Optional
+                                  </span>
+                                )}
+                                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                  {q.fieldType}
+                                </span>
+                              </div>
+                              {q.labelNp && <p className="text-xs text-gray-400 font-sans mt-0.5">{q.labelNp}</p>}
+                              {q.helpText && <p className="text-[11px] text-gray-500 font-mono mt-0.5">{q.helpText}</p>}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 self-end md:self-auto">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveQuestion(idx, "up")}
+                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30 cursor-pointer"
+                              title="Move Question Up"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === (editingService.questions?.length || 0) - 1}
+                              onClick={() => handleMoveQuestion(idx, "down")}
+                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30 cursor-pointer"
+                              title="Move Question Down"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingQuestion(q)}
+                              className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                              <span>Configure</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteQuestion(q.id)}
+                              className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 cursor-pointer"
+                              title="Delete Question"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Save Service Footer */}
+                <div className="flex items-center justify-between pt-6 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteService(editingService.id)}
+                    className="px-4 py-2 bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Delete Service</span>
+                  </button>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setEditingService(null); setEditingQuestion(null); }}
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs font-mono font-bold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveServiceForm(editingService)}
+                      className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 cursor-pointer"
+                    >
+                      Save Service & Questions to Firebase
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* All Services Grid */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {allServices.map((srv) => (
+                  <div
+                    key={srv.id}
+                    className="bg-slate-900 border border-white/10 rounded-2xl p-5 space-y-4 hover:border-amber-500/40 transition-all flex flex-col justify-between"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 font-mono text-xs font-bold border border-amber-500/20">
+                          {srv.priceEn}
+                        </span>
+                        <span className="text-[11px] font-mono text-gray-400">
+                          {(srv.questions || []).length} dynamic questions
+                        </span>
+                      </div>
+
+                      <h3 className="text-base font-bold text-white font-serif">{srv.titleEn}</h3>
+                      {srv.titleNp && <p className="text-xs text-gray-400 font-sans">{srv.titleNp}</p>}
+                      <p className="text-xs text-gray-400 line-clamp-3 font-sans leading-relaxed">
+                        {srv.descriptionEn}
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-[10px] font-mono text-gray-500">ID: {srv.id}</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditingService({ ...srv })}
+                        className="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                        <span>Manage Questions</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Configure Individual Question Modal */}
+            {editingQuestion && (
+              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-5 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <h4 className="text-base font-bold text-amber-400 uppercase font-mono flex items-center gap-2">
+                      <Edit2 className="w-4 h-4" />
+                      <span>Configure Dynamic Question</span>
+                    </h4>
+                    <button
+                      onClick={() => setEditingQuestion(null)}
+                      className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 text-xs font-mono">
+                    <div className="space-y-1">
+                      <label className="text-gray-400 uppercase font-bold">Question Label / Title (English) *</label>
+                      <input
+                        type="text"
+                        value={editingQuestion.labelEn}
+                        onChange={(e) => setEditingQuestion({ ...editingQuestion, labelEn: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-gray-400 uppercase font-bold">Question Label (Nepali)</label>
+                      <input
+                        type="text"
+                        value={editingQuestion.labelNp || ""}
+                        onChange={(e) => setEditingQuestion({ ...editingQuestion, labelNp: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-gray-400 uppercase font-bold">Field Type *</label>
+                        <select
+                          value={editingQuestion.fieldType}
+                          onChange={(e) => setEditingQuestion({ ...editingQuestion, fieldType: e.target.value as ServiceFieldType })}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-amber-400 focus:border-amber-500 outline-none"
+                        >
+                          <option value="short_text">Short Text (Single Line)</option>
+                          <option value="long_text">Long Text (Paragraph)</option>
+                          <option value="number">Number</option>
+                          <option value="email">Email Address</option>
+                          <option value="phone">Phone Number (+977)</option>
+                          <option value="date">Date</option>
+                          <option value="time">Time</option>
+                          <option value="datetime">Date & Time</option>
+                          <option value="dropdown">Dropdown Selection</option>
+                          <option value="radio">Single Choice (Radio)</option>
+                          <option value="checkbox">Multiple Choice (Checkboxes)</option>
+                          <option value="image_upload">Image / Photo Upload</option>
+                          <option value="file_upload">Document Upload (PDF)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-gray-400 uppercase font-bold">Requirement</label>
+                        <div className="flex items-center gap-3 pt-2">
+                          <label className="flex items-center gap-2 cursor-pointer text-white">
+                            <input
+                              type="radio"
+                              name="reqToggle"
+                              checked={editingQuestion.required === true}
+                              onChange={() => setEditingQuestion({ ...editingQuestion, required: true })}
+                              className="accent-amber-500"
+                            />
+                            <span>Required</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer text-gray-400">
+                            <input
+                              type="radio"
+                              name="reqToggle"
+                              checked={editingQuestion.required === false}
+                              onChange={() => setEditingQuestion({ ...editingQuestion, required: false })}
+                              className="accent-amber-500"
+                            />
+                            <span>Optional</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-gray-400 uppercase font-bold">Help Text / Instructions for Customer</label>
+                      <input
+                        type="text"
+                        value={editingQuestion.helpText || ""}
+                        onChange={(e) => setEditingQuestion({ ...editingQuestion, helpText: e.target.value })}
+                        placeholder="e.g. Please upload clear scans of both front and back"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                      />
+                    </div>
+
+                    {/* Options builder for Dropdown / Radio / Checkbox */}
+                    {(editingQuestion.fieldType === "dropdown" || editingQuestion.fieldType === "radio" || editingQuestion.fieldType === "checkbox") && (
+                      <div className="space-y-2 p-3 bg-black/40 rounded-xl border border-white/10">
+                        <label className="text-amber-400 uppercase font-bold block">Choice Options List</label>
+                        <div className="space-y-2">
+                          {(editingQuestion.options || []).map((opt, oidx) => (
+                            <div key={oidx} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={opt}
+                                onChange={(e) => {
+                                  const updatedOpts = [...(editingQuestion.options || [])];
+                                  updatedOpts[oidx] = e.target.value;
+                                  setEditingQuestion({ ...editingQuestion, options: updatedOpts });
+                                }}
+                                className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updatedOpts = (editingQuestion.options || []).filter((_, i) => i !== oidx);
+                                  setEditingQuestion({ ...editingQuestion, options: updatedOpts });
+                                }}
+                                className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updatedOpts = [...(editingQuestion.options || []), `Option ${(editingQuestion.options?.length || 0) + 1}`];
+                              setEditingQuestion({ ...editingQuestion, options: updatedOpts });
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-[11px] font-bold"
+                          >
+                            + Add Option
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setEditingQuestion(null)}
+                      className="px-4 py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white text-xs font-mono font-bold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateQuestion(editingQuestion)}
+                      className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-mono font-bold uppercase tracking-wider"
+                    >
+                      Save Question
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* TAB 2: SERVICE SUBMISSIONS */}
+        {/* ---------------------------------------------------- */}
+        {activeTab === "applications" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-xl font-bold font-serif text-white flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-amber-400" />
+                  <span>Customer Service Submissions ({applications.length})</span>
+                </h2>
+                <p className="text-xs text-slate-400 font-mono mt-1">
+                  View submitted applications, customer details, all dynamic answers, uploaded images, and 12-hour payment tracking.
+                </p>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-500" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search applicant, ID, phone..."
+                    className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white font-mono focus:border-amber-500 outline-none w-52 sm:w-64"
+                  />
+                </div>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-amber-400 font-mono outline-none"
+                >
+                  <option value="all">All Request Statuses</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="in progress">In Progress</option>
+                  <option value="approved">Approved</option>
+                  <option value="completed">Completed</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+
+                <select
+                  value={paymentFilter}
+                  onChange={(e) => setPaymentFilter(e.target.value)}
+                  className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-amber-400 font-mono outline-none"
+                >
+                  <option value="all">All Payment Statuses</option>
+                  <option value="pending">Pending / Unpaid</option>
+                  <option value="paid">Paid</option>
+                  <option value="expired">Expired</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            {filteredApplications.length === 0 ? (
+              <div className="text-center py-16 bg-slate-900/50 rounded-2xl border border-white/5 text-gray-400 font-mono text-xs">
+                No submissions found matching your search and filters.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredApplications.map((app) => {
+                  const deadline = getDeadlineInfo(app.paymentDueAt, app.paymentStatus);
+                  const isExpanded = selectedItem?.id === app.id;
+
+                  return (
+                    <div
+                      key={app.id}
+                      className={`bg-slate-900 border rounded-2xl p-5 space-y-4 transition-all ${
+                        isExpanded ? "border-amber-500/50 shadow-xl shadow-amber-500/5" : "border-white/10 hover:border-white/20"
+                      }`}
+                    >
+                      {/* Summary Row */}
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                              {app.serviceTitle || "Service Intake"}
+                            </span>
+                            <span className="font-mono text-xs text-gray-400 select-all font-bold">
+                              ID: {app.id}
+                            </span>
+                            <span className="text-gray-600">&bull;</span>
+                            <span className="text-[11px] font-mono text-gray-400">
+                              {app.submittedAt ? new Date(app.submittedAt).toLocaleString() : app.timestamp ? new Date(app.timestamp).toLocaleString() : "Recently"}
+                            </span>
+                          </div>
+
+                          <h3 className="text-base font-bold text-white font-serif">
+                            {app.name || app.fullName || "Applicant"}
+                          </h3>
+
+                          <div className="flex items-center gap-4 text-xs font-mono text-gray-400 pt-0.5">
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3.5 h-3.5 text-amber-400" />
+                              {app.contact || app.phone || "No phone"}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Mail className="w-3.5 h-3.5 text-cyan-400" />
+                              {app.email || "No email"}
+                            </span>
+                            <span className="font-bold text-amber-300">
+                              Amount: {app.amount || "NPR --"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status Badges & Quick Actions */}
+                        <div className="flex items-center gap-3 flex-wrap lg:justify-end">
+                          {/* Payment status badge with 12h countdown indicator */}
+                          <div className="flex flex-col items-start lg:items-end">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold uppercase border ${
+                              app.paymentStatus === "Paid"
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                                : deadline.isExpired
+                                ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                                : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                            }`}>
+                              {app.paymentStatus || "Pending"}
+                            </span>
+                            <span className="text-[10px] font-mono text-gray-500 mt-0.5">
+                              {deadline.text}
+                            </span>
+                          </div>
+
+                          <select
+                            value={app.status || "Submitted"}
+                            onChange={(e) => handleUpdateApplicationStatus(app.id, e.target.value)}
+                            className="bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-1.5 text-xs font-mono outline-none"
+                          >
+                            <option value="Submitted">Submitted</option>
+                            <option value="Under Review">Under Review</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Rejected">Rejected</option>
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedItem(isExpanded ? null : app)}
+                            className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-amber-400" />
+                            <span>{isExpanded ? "Collapse" : "View Answers"}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expanded Details Drawer */}
+                      {isExpanded && (
+                        <div className="pt-4 border-t border-slate-800 space-y-5 animate-in fade-in duration-200">
+                          
+                          {/* 1. Dynamic Question Answers */}
+                          <div className="space-y-3 bg-black/40 p-4 rounded-2xl border border-white/5">
+                            <h4 className="text-xs font-bold text-amber-400 uppercase font-mono tracking-wider flex items-center gap-2">
+                              <CheckSquare className="w-4 h-4" />
+                              <span>Submitted Dynamic Question Answers</span>
+                            </h4>
+
+                            {app.dynamicAnswers && Object.keys(app.dynamicAnswers).length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                {Object.entries(app.dynamicAnswers).map(([label, val]: [string, any], aidx) => (
+                                  <div key={aidx} className="p-3 bg-slate-950/60 rounded-xl border border-white/5 space-y-1">
+                                    <span className="text-[10px] font-mono text-gray-500 uppercase block">{label}</span>
+                                    <p className="font-sans text-white font-medium">{String(val || "N/A")}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : app.customAnswers && Object.keys(app.customAnswers).length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                {Object.entries(app.customAnswers).map(([label, val]: [string, any], aidx) => (
+                                  <div key={aidx} className="p-3 bg-slate-950/60 rounded-xl border border-white/5 space-y-1">
+                                    <span className="text-[10px] font-mono text-gray-500 uppercase block">{label}</span>
+                                    <p className="font-sans text-white font-medium">{String(val || "N/A")}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-500 font-mono">No extra custom fields submitted.</p>
+                            )}
+                          </div>
+
+                          {/* 2. Uploaded Images & Documents */}
+                          {app.attachments && app.attachments.length > 0 && (
+                            <div className="space-y-3 bg-black/40 p-4 rounded-2xl border border-white/5">
+                              <h4 className="text-xs font-bold text-amber-400 uppercase font-mono tracking-wider flex items-center gap-2">
+                                <ImageIcon className="w-4 h-4" />
+                                <span>Uploaded Files & Images ({app.attachments.length})</span>
+                              </h4>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {app.attachments.map((file: any, fidx: number) => {
+                                  const isImage = file.data && (file.data.startsWith("data:image/") || file.data.includes(".jpg") || file.data.includes(".png") || file.data.includes(".webp"));
+                                  return (
+                                    <div
+                                      key={fidx}
+                                      className="p-3 bg-slate-950 rounded-xl border border-white/10 flex items-center justify-between gap-3"
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0">
+                                        {isImage ? (
+                                          <img
+                                            src={file.data}
+                                            alt={file.name}
+                                            onClick={() => setLightboxImage(file.data)}
+                                            className="w-10 h-10 rounded-lg object-cover border border-white/20 shrink-0 cursor-pointer hover:opacity-80"
+                                            referrerPolicy="no-referrer"
+                                          />
+                                        ) : (
+                                          <div className="p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400 shrink-0">
+                                            <FileText className="h-5 w-5" />
+                                          </div>
+                                        )}
+                                        <div className="min-w-0">
+                                          <p className="text-xs font-mono font-bold text-white truncate">{file.name || "Attachment"}</p>
+                                          <span className="text-[10px] font-mono text-gray-400 truncate block">{file.fileName || "file"}</span>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {isImage && (
+                                          <button
+                                            type="button"
+                                            onClick={() => setLightboxImage(file.data)}
+                                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300"
+                                            title="Enlarge"
+                                          >
+                                            <Eye className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                        <a
+                                          href={file.data}
+                                          download={file.fileName || file.name || "download"}
+                                          className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400"
+                                          title="Download"
+                                        >
+                                          <DownloadCloud className="w-3.5 h-3.5" />
+                                        </a>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 3. Status, Remarks & Payment Actions */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950 p-4 rounded-2xl border border-white/5">
+                            
+                            {/* Payment Control */}
+                            <div className="space-y-3">
+                              <h5 className="text-[11px] font-mono font-bold uppercase text-amber-400">
+                                Payment Verification (12h Deadline)
+                              </h5>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePaymentStatus(app.id, "Paid")}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold hover:bg-emerald-500/30 cursor-pointer"
+                                >
+                                  Mark as Paid
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePaymentStatus(app.id, "Pending")}
+                                  className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold hover:bg-amber-500/20 cursor-pointer"
+                                >
+                                  Mark Pending
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePaymentStatus(app.id, "Expired")}
+                                  className="px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-300 border border-rose-500/30 text-xs font-mono font-bold hover:bg-rose-500/20 cursor-pointer"
+                                >
+                                  Mark Expired
+                                </button>
+                              </div>
+
+                              <div className="pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const matchingInv = invoices.find(i => i.submissionId === app.id || i.invoiceId === `INV-${app.id}`);
+                                    if (matchingInv) {
+                                      setViewingInvoice(matchingInv);
+                                    } else {
+                                      // Generate temporary view from application record
+                                      setViewingInvoice({
+                                        invoiceId: `INV-${app.id}`,
+                                        submissionId: app.id,
+                                        serviceId: app.serviceId || "serv-default",
+                                        serviceTitle: app.serviceTitle || "Professional Service",
+                                        clientName: app.name || "Valued Client",
+                                        clientEmail: app.email || "client@amitjoshi.info.np",
+                                        clientPhone: app.contact || "+977 9800000000",
+                                        clientAddress: app.temporaryAddress || "",
+                                        amount: typeof app.amount === "number" ? app.amount : 5000,
+                                        amountFormatted: app.amount || "NPR 5,000",
+                                        currency: "NPR",
+                                        submittedAt: app.submittedAt || app.timestamp || new Date().toISOString(),
+                                        paymentDueAt: app.paymentDueAt || new Date(Date.now() + 12 * 3600 * 1000).toISOString(),
+                                        paymentStatus: app.paymentStatus || "Pending",
+                                        answers: app.dynamicAnswers || app.customAnswers,
+                                        attachments: app.attachments
+                                      });
+                                    }
+                                  }}
+                                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-amber-500/10"
+                                >
+                                  <Receipt className="w-3.5 h-3.5" />
+                                  <span>View & Print Official Bill</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Admin Remarks */}
+                            <div className="space-y-2">
+                              <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
+                                Admin Remarks for Customer (Visible via Status Checker)
+                              </label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  defaultValue={app.remarks || ""}
+                                  id={`remarks-${app.id}`}
+                                  placeholder="e.g. Documents verified. Processing underway..."
+                                  className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const input = document.getElementById(`remarks-${app.id}`) as HTMLInputElement;
+                                    handleUpdateApplicationStatus(app.id, app.status || "Submitted", input ? input.value : "");
+                                  }}
+                                  className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-mono font-bold cursor-pointer"
+                                >
+                                  Save
+                                </button>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleEditAccess(app.id, app.allowEdit || false)}
+                                  className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold uppercase ${
+                                    app.allowEdit
+                                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                      : "bg-white/5 text-gray-400 border border-white/10"
+                                  }`}
+                                >
+                                  {app.allowEdit ? "🔓 Customer Edit: ON" : "🔒 Customer Edit: OFF"}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteItem("applications", app.id)}
+                                  className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg cursor-pointer"
+                                  title="Delete Record"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+
+                          </div>
+
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* TAB 3: INVOICES & 12-HOUR BILLING */}
+        {/* ---------------------------------------------------- */}
+        {activeTab === "invoices" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-xl font-bold font-serif text-white flex items-center gap-2">
+                  <Receipt className="w-5 h-5 text-amber-400" />
+                  <span>Invoices & 12-Hour Billing Ledger ({invoices.length})</span>
+                </h2>
+                <p className="text-xs text-slate-400 font-mono mt-1">
+                  Manage digital receipts, 12-hour payment countdowns, and export official printable invoices.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by invoice ID, client, status..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-xs text-white focus:outline-none focus:border-amber-500"
+                  placeholder="Search invoice # or client..."
+                  className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-amber-500 outline-none w-52"
                 />
+
+                <select
+                  value={paymentFilter}
+                  onChange={(e) => setPaymentFilter(e.target.value)}
+                  className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-amber-400 font-mono outline-none"
+                >
+                  <option value="all">All Invoices</option>
+                  <option value="pending">Pending</option>
+                  <option value="paid">Paid</option>
+                  <option value="expired">Expired</option>
+                </select>
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60 shadow-inner">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-900/90 text-slate-400 font-mono uppercase tracking-wider text-[11px] border-b border-slate-800">
-                  <tr>
-                    <th className="py-3.5 px-4">Invoice ID</th>
-                    <th className="py-3.5 px-4">Client Details</th>
-                    <th className="py-3.5 px-4">Service Ordered</th>
-                    <th className="py-3.5 px-4">Amount</th>
-                    <th className="py-3.5 px-4">12h Deadline & Status</th>
-                    <th className="py-3.5 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {filteredInvoices.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-500 font-mono">
-                        {searchTerm ? "No invoices match search criteria." : "No invoices recorded yet."}
-                      </td>
+            {filteredInvoices.length === 0 ? (
+              <div className="text-center py-16 bg-slate-900/50 rounded-2xl border border-white/5 text-gray-400 font-mono text-xs">
+                No invoices recorded in Firebase yet. Invoices are automatically issued whenever a service application is submitted.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left font-mono text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-gray-400 uppercase text-[10px] tracking-wider">
+                      <th className="py-3 px-3">Invoice #</th>
+                      <th className="py-3 px-3">Client Details</th>
+                      <th className="py-3 px-3">Service</th>
+                      <th className="py-3 px-3">Amount</th>
+                      <th className="py-3 px-3">12h Due Date / Status</th>
+                      <th className="py-3 px-3">Payment</th>
+                      <th className="py-3 px-3 text-right">Actions</th>
                     </tr>
-                  ) : (
-                    filteredInvoices.map((inv) => {
-                      const isExpired = new Date(inv.paymentDueAt).getTime() < Date.now();
-                      const status = inv.paymentStatus === "Paid" ? "Paid" : isExpired ? "Expired" : inv.paymentStatus;
-
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {filteredInvoices.map((inv) => {
+                      const deadline = getDeadlineInfo(inv.paymentDueAt, inv.paymentStatus);
                       return (
-                        <tr key={inv.invoiceId} className="hover:bg-slate-900/50 transition-colors">
-                          <td className="py-3.5 px-4 font-mono font-bold text-amber-400">
+                        <tr key={inv.invoiceId} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-4 px-3 font-bold text-amber-400 select-all">
                             {inv.invoiceId}
                           </td>
-                          <td className="py-3.5 px-4">
-                            <p className="font-bold text-white">{inv.clientName}</p>
-                            <p className="text-[11px] text-slate-400 font-mono">{inv.clientPhone} &bull; {inv.clientEmail}</p>
+                          <td className="py-4 px-3">
+                            <p className="font-sans font-bold text-white text-sm">{inv.clientName}</p>
+                            <p className="text-gray-400 text-[11px]">{inv.clientPhone} &bull; {inv.clientEmail}</p>
                           </td>
-                          <td className="py-3.5 px-4 font-medium text-slate-300">
+                          <td className="py-4 px-3 text-gray-300 font-sans">
                             {inv.serviceTitle}
                           </td>
-                          <td className="py-3.5 px-4 font-mono font-bold text-white">
+                          <td className="py-4 px-3 font-bold text-white">
                             {inv.amountFormatted || `NPR ${inv.amount?.toLocaleString()}`}
                           </td>
-                          <td className="py-3.5 px-4">
-                            <div className="space-y-1">
-                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
-                                status === "Paid"
-                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                  : status === "Expired"
-                                  ? "bg-rose-500/10 text-rose-400 border border-rose-500/30"
-                                  : "bg-amber-500/10 text-amber-400 border border-amber-500/30"
-                              }`}>
-                                {status}
-                              </span>
-                              <p className="text-[10px] font-mono text-slate-400">
-                                Due: {new Date(inv.paymentDueAt).toLocaleTimeString()}
-                              </p>
+                          <td className="py-4 px-3">
+                            <div className="text-gray-400 text-[11px]">
+                              {inv.paymentDueAt ? new Date(inv.paymentDueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A"}
                             </div>
+                            <span className={`text-[10px] font-bold ${deadline.isPaid ? "text-emerald-400" : deadline.isExpired ? "text-rose-400" : "text-amber-400"}`}>
+                              {deadline.text}
+                            </span>
                           </td>
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end space-x-2">
+                          <td className="py-4 px-3">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                              inv.paymentStatus === "Paid"
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                                : deadline.isExpired
+                                ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                                : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                            }`}>
+                              {inv.paymentStatus || "Pending"}
+                            </span>
+                          </td>
+                          <td className="py-4 px-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
                               <button
+                                type="button"
                                 onClick={() => setViewingInvoice(inv)}
-                                className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-mono font-bold flex items-center space-x-1 cursor-pointer"
+                                className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
                               >
-                                <Eye className="w-3 h-3" />
-                                <span>View & Print</span>
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>View Bill</span>
                               </button>
-
-                              <select
-                                value={inv.paymentStatus}
-                                onChange={(e) => handleUpdateInvoiceStatus(inv.invoiceId, e.target.value as any)}
-                                className="bg-black/60 border border-slate-700 rounded px-2 py-1 text-[11px] font-mono text-slate-200 outline-none"
-                              >
-                                <option value="Pending">Pending</option>
-                                <option value="Paid">Paid</option>
-                                <option value="Expired">Expired</option>
-                                <option value="Cancelled">Cancelled</option>
-                              </select>
-
                               <button
+                                type="button"
                                 onClick={() => handleDeleteItem("invoices", inv.invoiceId)}
-                                className="p-1.5 rounded bg-red-950/60 hover:bg-red-900 text-red-400 transition-colors cursor-pointer"
+                                className="p-1.5 text-red-400 hover:text-red-300 rounded-lg"
                                 title="Delete Invoice"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
                         </tr>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ================= RBAC USER ROLES TAB ================= */}
+        {/* ---------------------------------------------------- */}
+        {/* TAB 4: SUGGESTIONS & FEEDBACK */}
+        {/* ---------------------------------------------------- */}
+        {activeTab === "suggestions" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-xl font-bold font-serif text-white flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-amber-400" />
+                  <span>Public Suggestions & Inquiries ({suggestions.length})</span>
+                </h2>
+                <p className="text-xs text-slate-400 font-mono mt-1">
+                  Community feedback, feature inquiries, and suggestions captured across the site.
+                </p>
+              </div>
+
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search feedback..."
+                className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:border-amber-500 outline-none w-52"
+              />
+            </div>
+
+            {filteredSuggestions.length === 0 ? (
+              <div className="text-center py-16 bg-slate-900/50 rounded-2xl border border-white/5 text-gray-400 font-mono text-xs">
+                No suggestions recorded in Firebase yet.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredSuggestions.map((sug) => (
+                  <div
+                    key={sug.id}
+                    className="bg-slate-900 border border-white/10 rounded-2xl p-5 space-y-3 hover:border-amber-500/30 transition-all"
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-amber-400 select-all">
+                          ID: {sug.id}
+                        </span>
+                        <span className="text-gray-600">&bull;</span>
+                        <span className="text-[11px] font-mono text-gray-400">
+                          {sug.timestamp ? new Date(sug.timestamp).toLocaleString() : "Recently"}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteItem("suggestions", sug.id)}
+                        className="p-1.5 text-red-400 hover:text-red-300 rounded-lg cursor-pointer"
+                        title="Delete Suggestion"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-white font-sans">{sug.name || "Community Member"}</h4>
+                      <p className="text-xs text-gray-400 font-mono">{sug.contact || sug.email || "No contact info provided"}</p>
+                    </div>
+
+                    <div className="p-3.5 bg-black/40 rounded-xl border border-white/5 text-xs font-sans text-gray-200 leading-relaxed">
+                      {sug.message || sug.suggestion || "No message body"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* TAB 5: NEWSLETTER SUBSCRIBERS */}
+        {/* ---------------------------------------------------- */}
+        {activeTab === "subscribers" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-xl font-bold font-serif text-white flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-amber-400" />
+                  <span>Verified Newsletter Subscribers ({subscribers.length})</span>
+                </h2>
+                <p className="text-xs text-slate-400 font-mono mt-1">
+                  Centralized subscriber distribution list synced with Firebase.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleCopyAllSubscriberEmails}
+                  className="px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  {bulkCopySuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{bulkCopySuccess ? "Copied All!" : "Copy All Emails"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportSubscribersCSV}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/20 transition-all"
+                >
+                  <DownloadCloud className="w-3.5 h-3.5" />
+                  <span>Export CSV</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-500" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Filter subscribers by email or name..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-2 text-xs text-white font-mono focus:border-amber-500 outline-none"
+                />
+              </div>
+            </div>
+
+            {filteredSubscribers.length === 0 ? (
+              <div className="text-center py-16 bg-slate-900/50 rounded-2xl border border-white/5 text-gray-400 font-mono text-xs">
+                No subscribers recorded yet in Firebase.
+              </div>
+            ) : (
+              <div className="overflow-x-auto bg-slate-900 rounded-2xl border border-white/5">
+                <table className="w-full text-left font-mono text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-gray-400 text-[10px] uppercase tracking-wider">
+                      <th className="py-3 px-4">#</th>
+                      <th className="py-3 px-4">Subscriber Name</th>
+                      <th className="py-3 px-4">Email Address</th>
+                      <th className="py-3 px-4">Subscribed Date</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {filteredSubscribers.map((sub, idx) => (
+                      <tr key={sub.id || idx} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3 px-4 text-gray-500">{idx + 1}</td>
+                        <td className="py-3 px-4 font-bold text-white font-sans">
+                          {sub.name || "Community Member"}
+                        </td>
+                        <td className="py-3 px-4 text-amber-300 font-bold">
+                          <a href={`mailto:${sub.email}`} className="hover:underline">
+                            {sub.email}
+                          </a>
+                        </td>
+                        <td className="py-3 px-4 text-gray-400 text-[11px]">
+                          {sub.subscribedAt || sub.timestamp || "N/A"}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteItem("subscribers", sub.id)}
+                            className="p-1.5 text-red-400 hover:text-red-300 rounded-lg cursor-pointer"
+                            title="Remove Subscriber"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* TAB 6: RBAC & ADMIN USERS */}
+        {/* ---------------------------------------------------- */}
         {activeTab === "rbac" && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
                 <h2 className="text-xl font-bold font-serif text-white flex items-center gap-2">
                   <Shield className="w-5 h-5 text-amber-400" />
-                  <span>Role-Based Access Control (RBAC) & Service Admins</span>
+                  <span>Services Admin Accounts & Access Control</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-1 font-mono">
-                  Manage authorized users, 4-digit PIN credentials, roles, and administrative capabilities.
+                <p className="text-xs text-slate-400 font-mono mt-1">
+                  Manage authorized administrator logins, 4-digit security PIN codes, and access permissions.
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => {
                   setUserForm({
                     id: "",
@@ -783,624 +2093,165 @@ export default function AdminServicesPortal() {
                     role: "services_admin",
                     status: "active",
                     permissions: {
-                      canManageServices: true,
-                      canManageApplications: true,
-                      canManageInvoices: true,
-                      canManageSuggestions: true,
-                      canManageSubscribers: true,
-                      canManageUsers: false
+                      serviceRequests: true,
+                      suggestions: true,
+                      newsletter: true,
+                      serviceConfiguration: true,
+                      billing: true
                     }
                   });
                   setIsEditingUser(true);
                 }}
-                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold uppercase tracking-wider text-xs rounded-xl flex items-center gap-2 font-mono shadow cursor-pointer"
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 flex items-center gap-2 cursor-pointer transition-all"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>Add Service Admin User</span>
+                <span>Add Admin User</span>
               </button>
             </div>
 
-            {/* Admin User Edit / Create Modal */}
+            {/* User Form Modal */}
             {isEditingUser && (
-              <div className="p-6 bg-slate-950 border border-amber-500/40 rounded-2xl space-y-4 animate-in fade-in">
-                <h3 className="text-sm font-bold text-amber-400 font-mono uppercase tracking-wider">
-                  {userForm.id ? "Edit Service Admin User" : "Create New Service Admin Account"}
-                </h3>
+              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <h4 className="text-base font-bold text-amber-400 uppercase font-mono flex items-center gap-2">
+                      <UserPlus className="w-4 h-4" />
+                      <span>{userForm.id ? "Edit Admin User" : "Create Admin User"}</span>
+                    </h4>
+                    <button
+                      onClick={() => setIsEditingUser(false)}
+                      className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
 
-                <form onSubmit={handleSaveUser} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">Username *</label>
-                      <input
-                        type="text"
-                        required
-                        value={userForm.username}
-                        onChange={(e) => setUserForm({ ...userForm, username: e.target.value.toLowerCase().trim() })}
-                        placeholder="e.g. johnadmin"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">Full Legal Name *</label>
+                  <form onSubmit={handleSaveUser} className="space-y-4 text-xs font-mono">
+                    <div className="space-y-1">
+                      <label className="text-gray-400 uppercase font-bold">Full Name *</label>
                       <input
                         type="text"
                         required
                         value={userForm.name}
                         onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-                        placeholder="e.g. John Doe"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
+                        placeholder="e.g. Services Manager"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">4-Digit Access PIN *</label>
+                    <div className="space-y-1">
+                      <label className="text-gray-400 uppercase font-bold">Username *</label>
+                      <input
+                        type="text"
+                        required
+                        value={userForm.username}
+                        onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                        placeholder="e.g. loginadmin"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-gray-400 uppercase font-bold">4-Digit Security PIN *</label>
                       <input
                         type="password"
                         required
                         maxLength={4}
                         value={userForm.pin}
-                        onChange={(e) => setUserForm({ ...userForm, pin: e.target.value.replace(/\D/g, "") })}
+                        onChange={(e) => setUserForm({ ...userForm, pin: e.target.value })}
                         placeholder="••••"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono text-center"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-center font-mono text-lg tracking-widest focus:border-amber-500 outline-none"
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">Role Type</label>
+                    <div className="space-y-1">
+                      <label className="text-gray-400 uppercase font-bold">Role</label>
                       <select
                         value={userForm.role}
                         onChange={(e) => setUserForm({ ...userForm, role: e.target.value as any })}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-amber-400 focus:border-amber-500 outline-none"
                       >
-                        <option value="super_admin">Super Admin (Unrestricted Full Control)</option>
-                        <option value="services_admin">Services Admin (Standard Operations)</option>
-                        <option value="restricted">Restricted (View-Only / Disabled)</option>
+                        <option value="super_admin">Super Admin (All Capabilities)</option>
+                        <option value="services_admin">Services Admin</option>
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">Account Status</label>
-                      <select
-                        value={userForm.status}
-                        onChange={(e) => setUserForm({ ...userForm, status: e.target.value as any })}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingUser(false)}
+                        className="px-4 py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white"
                       >
-                        <option value="active">Active (Access Allowed)</option>
-                        <option value="restricted">Restricted (Access Denied)</option>
-                      </select>
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold uppercase tracking-wider"
+                      >
+                        Save Account
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Permissions Checkboxes */}
-                  <div className="space-y-2 pt-2 border-t border-slate-800">
-                    <span className="text-[11px] font-mono uppercase text-slate-400 block font-bold">Module Permissions</span>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={userForm.permissions?.canManageApplications ?? true}
-                          onChange={(e) => setUserForm({
-                            ...userForm,
-                            permissions: { ...userForm.permissions, canManageApplications: e.target.checked }
-                          })}
-                        />
-                        <span>Applications</span>
-                      </label>
-
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={userForm.permissions?.canManageInvoices ?? true}
-                          onChange={(e) => setUserForm({
-                            ...userForm,
-                            permissions: { ...userForm.permissions, canManageInvoices: e.target.checked }
-                          })}
-                        />
-                        <span>Invoices & Billing</span>
-                      </label>
-
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={userForm.permissions?.canManageSuggestions ?? true}
-                          onChange={(e) => setUserForm({
-                            ...userForm,
-                            permissions: { ...userForm.permissions, canManageSuggestions: e.target.checked }
-                          })}
-                        />
-                        <span>Suggestions</span>
-                      </label>
-
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={userForm.permissions?.canManageSubscribers ?? true}
-                          onChange={(e) => setUserForm({
-                            ...userForm,
-                            permissions: { ...userForm.permissions, canManageSubscribers: e.target.checked }
-                          })}
-                        />
-                        <span>Newsletter</span>
-                      </label>
-
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={userForm.permissions?.canManageUsers ?? false}
-                          onChange={(e) => setUserForm({
-                            ...userForm,
-                            permissions: { ...userForm.permissions, canManageUsers: e.target.checked }
-                          })}
-                        />
-                        <span>Manage Admin Users</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-3 pt-3 border-t border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingUser(false)}
-                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-mono font-bold"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold text-xs uppercase"
-                    >
-                      Save Admin Account
-                    </button>
-                  </div>
-                </form>
+                  </form>
+                </div>
               </div>
             )}
 
-            {/* Admin Users Table */}
-            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60 shadow-inner">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-900/90 text-slate-400 font-mono uppercase tracking-wider text-[11px] border-b border-slate-800">
-                  <tr>
-                    <th className="py-3.5 px-4">User</th>
-                    <th className="py-3.5 px-4">Username</th>
-                    <th className="py-3.5 px-4">Role</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4">Permissions</th>
-                    <th className="py-3.5 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {(portfolioData.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers).map((u) => (
-                    <tr key={u.id || u.username} className="hover:bg-slate-900/50 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-white">
-                        {u.name}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-amber-400">
-                        {u.username}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          u.role === "super_admin" ? "bg-purple-500/20 text-purple-300 border border-purple-500/40" : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        }`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                          u.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-red-500/10 text-red-400 border border-red-500/30"
-                        }`}>
-                          {u.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-[10px] text-slate-400">
-                        {u.role === "super_admin" ? "All Permissions" : Object.keys(u.permissions || {}).filter(k => (u.permissions as any)[k]).join(", ")}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => {
-                              setUserForm(u);
-                              setIsEditingUser(true);
-                            }}
-                            className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
-                            title="Edit User"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(u.id)}
-                            className="p-1.5 rounded bg-red-950/60 hover:bg-red-900 text-red-400 transition-colors cursor-pointer"
-                            title="Delete User"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ================= SUBSCRIBERS TAB ================= */}
-        {activeTab === "subscribers" && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4">
-              <div>
-                <h2 className="text-xl font-bold font-serif text-white flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-cyan-400" />
-                  <span>Newsletter Subscribers Directory</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-1 font-mono">
-                  All users who registered through the footer newsletter form are stored securely here.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <button
-                  onClick={handleCopyAllSubscriberEmails}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer shadow"
+            {/* Admin Users List */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {(portfolioData.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers || []).map((u) => (
+                <div
+                  key={u.id}
+                  className="bg-slate-900 border border-white/10 rounded-2xl p-5 space-y-4 hover:border-amber-500/30 transition-all flex flex-col justify-between"
                 >
-                  {bulkCopySuccess ? (
-                    <>
-                      <Check className="w-4 h-4 text-emerald-400" />
-                      <span className="text-emerald-300 font-bold">Emails Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4 text-cyan-400" />
-                      <span>Copy All Emails ({subscribers.length})</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  onClick={handleExportSubscribersCSV}
-                  className="px-3.5 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer shadow"
-                >
-                  <DownloadCloud className="w-4 h-4" />
-                  <span>Export CSV</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search subscribers by name, email, or date..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-xs text-white focus:outline-none focus:border-amber-500"
-              />
-            </div>
-
-            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60 shadow-inner">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-900/90 text-slate-400 font-mono uppercase tracking-wider text-[11px] border-b border-slate-800">
-                  <tr>
-                    <th className="py-3.5 px-4">#</th>
-                    <th className="py-3.5 px-4">Subscriber Name</th>
-                    <th className="py-3.5 px-4">Email Address</th>
-                    <th className="py-3.5 px-4">Subscribed Date & Time</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {filteredSubscribers.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-500 font-mono">
-                        {searchTerm ? "No subscribers match your search query." : "No newsletter subscribers registered yet."}
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredSubscribers.map((sub, index) => (
-                      <tr key={sub.id || index} className="hover:bg-slate-900/50 transition-colors group">
-                        <td className="py-3.5 px-4 font-mono text-slate-500">
-                          {index + 1}
-                        </td>
-                        <td className="py-3.5 px-4 font-semibold text-white">
-                          {sub.name || "Subscriber"}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono">
-                          <div className="flex items-center space-x-2">
-                            <a 
-                              href={`mailto:${sub.email}`} 
-                              className="text-cyan-400 hover:text-cyan-300 hover:underline transition-colors select-all"
-                            >
-                              {sub.email}
-                            </a>
-                            <button
-                              onClick={() => handleCopyEmail(sub.email)}
-                              className="p-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                            >
-                              {copiedEmail === sub.email ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                              ) : (
-                                <Copy className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-slate-300">
-                          <div className="flex items-center space-x-1.5">
-                            <Clock className="w-3.5 h-3.5 text-amber-400/80" />
-                            <span>{sub.subscribedAt || (sub.timestamp ? new Date(sub.timestamp).toLocaleString() : "N/A")}</span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            Active
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => handleDeleteItem("subscribers", sub.id)}
-                            className="p-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 text-red-400 hover:text-white border border-red-900/50 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ================= APPLICATIONS & SUGGESTIONS 2-COLUMN VIEW ================= */}
-        {(activeTab === "applications" || activeTab === "suggestions") && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* Left Column: List */}
-            <div className="lg:col-span-5 space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={`Search ${activeTab === "applications" ? "applications..." : "messages..."}`}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-xs text-white focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden max-h-[600px] overflow-y-auto space-y-2 p-2">
-                {activeTab === "applications" ? (
-                  filteredApplications.length === 0 ? (
-                    <div className="p-8 text-center text-slate-500 text-xs font-mono">
-                      No service applications found.
-                    </div>
-                  ) : (
-                    filteredApplications.map((app) => (
-                      <div
-                        key={app.id}
-                        onClick={() => setSelectedItem(app)}
-                        className={`p-3.5 rounded-xl border transition-all cursor-pointer relative ${
-                          selectedItem?.id === app.id
-                            ? "bg-amber-500/15 border-amber-500/60 text-white shadow-lg"
-                            : app.isRead
-                            ? "bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700"
-                            : "bg-amber-950/20 border-amber-500/30 text-white font-medium"
-                        }`}
-                      >
-                        {!app.isRead && (
-                          <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                        )}
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-amber-300 truncate max-w-[200px]">
-                            {app.serviceTitle || "Service Application"}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {app.timestamp ? new Date(app.timestamp).toLocaleDateString() : ""}
-                          </span>
-                        </div>
-
-                        <p className="text-sm font-semibold text-white">{app.name || app.fullName || "Anonymous"}</p>
-                        <p className="text-xs text-slate-400 flex items-center gap-2 mt-1">
-                          <span>📞 {app.contact || app.phone || "N/A"}</span>
-                          {app.email && <span>📧 {app.email}</span>}
-                        </p>
-                      </div>
-                    ))
-                  )
-                ) : (
-                  filteredSuggestions.length === 0 ? (
-                    <div className="p-8 text-center text-slate-500 text-xs font-mono">
-                      No messages or suggestions found.
-                    </div>
-                  ) : (
-                    filteredSuggestions.map((sug) => (
-                      <div
-                        key={sug.id}
-                        onClick={() => setSelectedItem(sug)}
-                        className={`p-3.5 rounded-xl border transition-all cursor-pointer relative ${
-                          selectedItem?.id === sug.id
-                            ? "bg-amber-500/15 border-amber-500/60 text-white shadow-lg"
-                            : sug.isRead
-                            ? "bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700"
-                            : "bg-amber-950/20 border-amber-500/30 text-white font-medium"
-                        }`}
-                      >
-                        {!sug.isRead && (
-                          <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                        )}
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-bold text-white">
-                            {sug.name || "Customer Feedback"}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {sug.timestamp ? new Date(sug.timestamp).toLocaleDateString() : ""}
-                          </span>
-                        </div>
-
-                        <p className="text-xs text-slate-300 line-clamp-2 mt-1">
-                          {sug.message || "No content message."}
-                        </p>
-                        {sug.contact && (
-                          <p className="text-[11px] text-amber-400 mt-1 font-mono">
-                            Contact: {sug.contact}
-                          </p>
-                        )}
-                      </div>
-                    ))
-                  )
-                )}
-              </div>
-            </div>
-
-            {/* Right Column: Detailed View */}
-            <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col min-h-[500px]">
-              {selectedItem ? (
-                <div className="space-y-6 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-                      <div>
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                          {activeTab === "applications" ? "Service Form Submission" : "Customer Message"}
-                        </span>
-                        <h2 className="text-xl font-bold font-serif text-white mt-2">
-                          {activeTab === "applications" 
-                            ? selectedItem.serviceTitle || "Application Details"
-                            : selectedItem.name || "Feedback Message"}
-                        </h2>
-                        <p className="text-xs text-slate-400 font-mono mt-0.5">
-                          Submitted: {selectedItem.timestamp ? new Date(selectedItem.timestamp).toLocaleString() : "N/A"}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleToggleRead(activeTab as any, selectedItem.id, !!selectedItem.isRead)}
-                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-mono flex items-center gap-1 transition-all cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
-                          {selectedItem.isRead ? "Mark Unread" : "Mark Read"}
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteItem(activeTab as any, selectedItem.id)}
-                          className="px-3 py-1.5 bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-800 rounded-lg text-xs font-mono flex items-center gap-1 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Delete
-                        </button>
-                      </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                        {u.role || "Admin"}
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                        ● {u.status || "Active"}
+                      </span>
                     </div>
 
-                    {activeTab === "applications" ? (
-                      <div className="space-y-4 text-xs">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                          <div>
-                            <span className="text-slate-400 font-mono block">Applicant Full Name</span>
-                            <span className="text-sm font-bold text-white block mt-0.5">{selectedItem.name || selectedItem.fullName || "N/A"}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 font-mono block">Contact Number</span>
-                            <a href={`https://wa.me/${(selectedItem.contact || selectedItem.phone || '').replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-amber-400 hover:underline block mt-0.5">
-                              {selectedItem.contact || selectedItem.phone || "N/A"}
-                            </a>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 font-mono block">Email Address</span>
-                            <span className="text-sm font-bold text-white block mt-0.5">{selectedItem.email || "N/A"}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 font-mono block">Service Selected</span>
-                            <span className="text-sm font-bold text-amber-300 block mt-0.5">{selectedItem.serviceTitle || "N/A"}</span>
-                          </div>
-                        </div>
-
-                        {selectedItem.customAnswers && Object.keys(selectedItem.customAnswers).length > 0 && (
-                          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                            <span className="text-amber-400 font-bold uppercase tracking-wider block font-mono">
-                              Custom Application Answers
-                            </span>
-                            <div className="space-y-2">
-                              {Object.entries(selectedItem.customAnswers).map(([qKey, aVal]: [string, any]) => (
-                                <div key={qKey} className="border-b border-slate-900 pb-1">
-                                  <p className="text-[11px] font-bold text-slate-300">{qKey}</p>
-                                  <p className="text-xs text-amber-200 font-mono mt-0.5">{String(aVal)}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {selectedItem.attachments && selectedItem.attachments.length > 0 && (
-                          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-                            <span className="text-amber-400 font-bold uppercase tracking-wider block font-mono">
-                              Attached Documents & Photos ({selectedItem.attachments.length})
-                            </span>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              {selectedItem.attachments.map((att: any, idx: number) => {
-                                const isPdf = att.data?.includes("application/pdf") || att.fileName?.endsWith(".pdf");
-                                return isPdf ? (
-                                  <a key={idx} href={att.data} target="_blank" rel="noopener noreferrer" className="p-3 bg-slate-900 border border-slate-800 hover:border-amber-500 rounded-lg flex flex-col items-center justify-center gap-1 text-center transition-all">
-                                    <FileText className="w-6 h-6 text-red-400" />
-                                    <span className="text-[10px] text-slate-300 truncate w-full font-mono">{att.name || att.fileName}</span>
-                                  </a>
-                                ) : (
-                                  <div key={idx} className="relative group overflow-hidden rounded-lg border border-slate-800 h-24 bg-slate-900">
-                                    <img src={att.data} alt={att.name || `Attachment ${idx+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-4 text-xs">
-                        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-                          <div>
-                            <span className="text-slate-400 font-mono block">Sender Name</span>
-                            <span className="text-sm font-bold text-white block">{selectedItem.name || "Anonymous"}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 font-mono block">Contact Details</span>
-                            <span className="text-sm font-bold text-amber-400 block">{selectedItem.contact || "N/A"}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 font-mono block">Message Content</span>
-                            <p className="mt-2 text-slate-200 text-sm whitespace-pre-line leading-relaxed bg-slate-900 p-3 rounded-lg border border-slate-800">
-                              {selectedItem.message}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    <h4 className="text-base font-bold text-white font-serif">{u.name}</h4>
+                    <p className="text-xs font-mono text-gray-400">Username: <strong className="text-white">{u.username}</strong></p>
+                    <p className="text-xs font-mono text-gray-400">PIN: <span className="tracking-widest font-mono text-amber-400 font-bold">••••</span></p>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-800 flex justify-end">
+                  <div className="pt-3 border-t border-white/5 flex items-center justify-between">
                     <button
-                      onClick={() => window.print()}
-                      className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold uppercase tracking-wider text-xs rounded-lg flex items-center gap-2 transition-all shadow-lg cursor-pointer"
+                      type="button"
+                      onClick={() => {
+                        setUserForm({ ...u });
+                        setIsEditingUser(true);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
                     >
-                      <FileText className="w-4 h-4" />
-                      Print Receipt
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(u.id)}
+                      className="p-1.5 text-red-400 hover:text-red-300 rounded-lg cursor-pointer"
+                      title="Delete User"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-500 space-y-3">
-                  <Inbox className="w-12 h-12 text-slate-700" />
-                  <p className="text-sm font-mono">Select an application or message from the left to view full details.</p>
-                </div>
-              )}
+              ))}
             </div>
           </div>
         )}
 
       </main>
+
+      {/* Footer */}
+      <footer className="bg-slate-900 border-t border-slate-800 px-6 py-4 text-center text-xs font-mono text-gray-500">
+        Amit Joshi Official Portal &bull; Services & Billing System &bull; Realtime Cloud Database Connected
+      </footer>
     </div>
   );
 }
