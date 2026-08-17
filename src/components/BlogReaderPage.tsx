@@ -64,8 +64,8 @@ export default function BlogReaderPage({
   const TypeIcon = typeMeta.icon;
 
   const currentUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/blogs/${blog.slug || blog.id}`
-    : `https://amitjoshi.info.np/blogs/${blog.slug || blog.id}`;
+    ? `${window.location.origin}/blog/${blog.slug || blog.id}`
+    : `https://amitjoshi.info.np/blog/${blog.slug || blog.id}`;
 
   const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`;
   const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(title)}`;

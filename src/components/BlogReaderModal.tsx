@@ -34,8 +34,8 @@ export default function BlogReaderModal({ isOpen, blog, onClose }: BlogReaderMod
     };
 
     const blogUrl = typeof window !== "undefined" 
-      ? `${window.location.origin}/blog?blog=${blog.slug || blog.id}`
-      : `https://amitjoshi.info.np/blog?blog=${blog.slug || blog.id}`;
+      ? `${window.location.origin}/blog/${blog.slug || blog.id}`
+      : `https://amitjoshi.info.np/blog/${blog.slug || blog.id}`;
 
     updateMeta("og:title", blog.titleEn);
     updateMeta("og:description", blog.contentEn?.substring(0, 160) || "Official publication by Amit Joshi");
@@ -63,8 +63,8 @@ export default function BlogReaderModal({ isOpen, blog, onClose }: BlogReaderMod
 
   // Shareable URL
   const currentUrl = typeof window !== "undefined" 
-    ? `${window.location.origin}/blog?blog=${blog.slug || blog.id}`
-    : `https://amitjoshi.info.np/blog?blog=${blog.slug || blog.id}`;
+    ? `${window.location.origin}/blog/${blog.slug || blog.id}`
+    : `https://amitjoshi.info.np/blog/${blog.slug || blog.id}`;
 
   const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`;
   const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(title)}`;

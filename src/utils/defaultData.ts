@@ -290,7 +290,7 @@ export interface PortfolioData {
 export const defaultPortfolioData: PortfolioData = {
   header: {
     logoUrl: "/profile.jpg",
-    faviconUrl: "/favicon.ico",
+    faviconUrl: "/favicon.jpeg",
     brandTextEn: "Amit Joshi",
     brandTextNp: "अमित जोशी"
   },

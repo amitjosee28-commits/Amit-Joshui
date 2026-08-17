@@ -492,7 +492,24 @@ export default function Dashboard() {
     try {
       const snapshot = await get(ref(db, "portfolio"));
       if (snapshot.exists()) {
-        setStagingData(snapshot.val());
+        const val = snapshot.val();
+        let blogsList = defaultPortfolioData.blogs.list;
+        if (val.blogs?.list) {
+          if (Array.isArray(val.blogs.list)) {
+            blogsList = val.blogs.list;
+          } else if (typeof val.blogs.list === "object" && val.blogs.list !== null) {
+            blogsList = Object.values(val.blogs.list);
+          }
+        }
+        setStagingData({
+          ...defaultPortfolioData,
+          ...val,
+          blogs: {
+            ...defaultPortfolioData.blogs,
+            ...(val.blogs || {}),
+            list: blogsList
+          }
+        });
       } else {
         // Fall back and seed initial values if empty
         await set(ref(db, "portfolio"), defaultPortfolioData);

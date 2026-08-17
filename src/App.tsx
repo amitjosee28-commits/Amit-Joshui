@@ -67,20 +67,32 @@ export function resolveRoute(data: PortfolioData): ParsedRoute {
   let cleanPath = rawPath.toLowerCase().replace(/^\/+|\/+$/g, "");
   let cleanHash = hash.toLowerCase().replace(/^#\/?|\/+$/g, "");
 
-  // If hash routing is used (e.g. #/tools or #social-media)
+  // If hash routing is used (e.g. #/tools or #social-media or #blog)
   if (cleanHash && (!cleanPath || cleanPath === "index.html")) {
     cleanPath = cleanHash;
   }
 
-  // 1. Direct query parameter triggers
+  // Extract blogs list safely
+  const blogsList: any[] = Array.isArray(data?.blogs?.list)
+    ? data.blogs.list
+    : (data?.blogs?.list && typeof data.blogs.list === "object" ? Object.values(data.blogs.list) : (defaultPortfolioData.blogs?.list || []));
+
+  // 1. Direct query parameter triggers (e.g. ?blog=slug or ?blog=id)
   if (params.has("blog")) {
-    const blogParam = params.get("blog")?.toLowerCase();
-    const foundBlog = (data.blogs?.list || []).find(
-      b => b.slug?.toLowerCase() === blogParam || b.id?.toLowerCase() === blogParam || b.titleEn?.toLowerCase().includes(blogParam || "")
-    );
-    if (foundBlog) {
-      return { view: "blog-detail", blog: foundBlog, path: `/blog/${foundBlog.slug || foundBlog.id}` };
+    const blogParam = params.get("blog")?.toLowerCase().trim();
+    if (blogParam && blogParam !== "all" && blogParam !== "true") {
+      const decodedParam = decodeURIComponent(blogParam);
+      const foundBlog = blogsList.find(
+        b => (b.slug && b.slug.toLowerCase() === blogParam) ||
+             (b.id && b.id.toLowerCase() === blogParam) ||
+             (b.slug && b.slug.toLowerCase() === decodedParam) ||
+             (b.id && b.id.toLowerCase() === decodedParam)
+      );
+      if (foundBlog) {
+        return { view: "blog-detail", blog: foundBlog, path: `/blog/${foundBlog.slug || foundBlog.id}` };
+      }
     }
+    return { view: "blogs", path: "/blog" };
   }
 
   if (params.has("invoice")) {
@@ -116,19 +128,26 @@ export function resolveRoute(data: PortfolioData): ParsedRoute {
     return { view: "contact", targetId: "contact-section", path: "/contact" };
   }
 
-  if (cleanPath === "blogs" || cleanPath === "blog" || cleanPath === "articles" || cleanPath === "blogs-section") {
-    return { view: "blogs", path: "/blogs" };
+  // Blog Directory Listing: /blog, /blogs, /articles
+  if (cleanPath === "blogs" || cleanPath === "blog" || cleanPath === "articles" || cleanPath === "blogs-section" || cleanPath === "blog-section") {
+    return { view: "blogs", path: "/blog" };
   }
 
-  // 3. Detailed Blog Article Route: /blogs/:slug or /blog/:slug
+  // 3. Detailed Blog Article Route: /blog/:slug, /blogs/:slug, /articles/:slug
   if (cleanPath.startsWith("blogs/") || cleanPath.startsWith("blog/") || cleanPath.startsWith("articles/")) {
-    const slug = cleanPath.replace(/^(blogs|blog|articles)\/+/, "");
-    const foundBlog = (data.blogs?.list || []).find(
-      b => b.slug?.toLowerCase() === slug || b.id?.toLowerCase() === slug
+    const rawSlug = cleanPath.replace(/^(blogs|blog|articles)\/+/, "");
+    const decodedSlug = decodeURIComponent(rawSlug).toLowerCase().trim();
+    const foundBlog = blogsList.find(
+      b => (b.slug && b.slug.toLowerCase() === decodedSlug) ||
+           (b.id && b.id.toLowerCase() === decodedSlug) ||
+           (b.slug && b.slug.toLowerCase() === rawSlug.toLowerCase()) ||
+           (b.id && b.id.toLowerCase() === rawSlug.toLowerCase())
     );
     if (foundBlog) {
       return { view: "blog-detail", blog: foundBlog, path: `/blog/${foundBlog.slug || foundBlog.id}` };
     }
+    // Genuinely invalid slug -> 404
+    return { view: "404", path: rawPath };
   }
 
   // 4. Invoice Route: /invoices/:id or /invoice/:id
@@ -138,7 +157,7 @@ export function resolveRoute(data: PortfolioData): ParsedRoute {
   }
 
   // 5. Custom permalinks from CMS
-  const customLinks = data.customLinks || [];
+  const customLinks = data?.customLinks || [];
   const matchedPermalink = customLinks.find(link => {
     const lSlug = (link.slug || "").toLowerCase().replace(/^\/+|\/+$/g, "");
     return lSlug && (cleanPath === lSlug || cleanHash === lSlug);
@@ -146,7 +165,7 @@ export function resolveRoute(data: PortfolioData): ParsedRoute {
 
   if (matchedPermalink) {
     if (matchedPermalink.type === "blog") {
-      const foundBlog = (data.blogs?.list || []).find(
+      const foundBlog = blogsList.find(
         b => b.id === matchedPermalink.targetId || b.slug === matchedPermalink.targetId
       );
       if (foundBlog) {
@@ -235,10 +254,25 @@ export default function App() {
     const unsubscribe = onValue(portfolioRef, (snapshot) => {
       const val = snapshot.val();
       if (val) {
+        // Safe extraction of blogs list
+        let blogsList = defaultPortfolioData.blogs.list;
+        if (val.blogs?.list) {
+          if (Array.isArray(val.blogs.list)) {
+            blogsList = val.blogs.list;
+          } else if (typeof val.blogs.list === "object" && val.blogs.list !== null) {
+            blogsList = Object.values(val.blogs.list);
+          }
+        }
+
         // Smart merge to ensure Nepali translations and required fields exist even if incomplete in Firebase
         const mergedVal = {
           ...defaultPortfolioData,
           ...val,
+          blogs: {
+            active: val.blogs?.active !== undefined ? val.blogs.active : true,
+            iframeUrl: val.blogs?.iframeUrl || defaultPortfolioData.blogs.iframeUrl,
+            list: blogsList
+          },
           services: (val.services || defaultPortfolioData.services).map((s: any, idx: number) => {
             const defS: any = defaultPortfolioData.services[idx] || {};
             return {
@@ -494,6 +528,11 @@ export default function App() {
     );
   }
 
+  // Standalone 404 View: structurally isolated with zero header, navigation, or footer
+  if (routeState.view === "404") {
+    return <NotFound404 onNavigate={(p) => navigateTo(p)} />;
+  }
+
   const headerData = portfolioData.header || defaultPortfolioData.header;
   const homepageData = portfolioData.homepage || defaultPortfolioData.homepage;
   const slides = homepageData.slides || defaultPortfolioData.homepage.slides;
@@ -590,7 +629,7 @@ export default function App() {
                 Education
               </button>
               {portfolioData.blogs?.active && (
-                <button onClick={() => navigateTo("/blogs")} className={`hover:text-cyan-400 transition-colors ${routeState.view === "blogs" || routeState.view === "blog-detail" ? "text-cyan-400 font-bold" : ""}`}>
+                <button onClick={() => navigateTo("/blog")} className={`hover:text-cyan-400 transition-colors ${routeState.view === "blogs" || routeState.view === "blog-detail" ? "text-cyan-400 font-bold" : ""}`}>
                   Blogs
                 </button>
               )}
@@ -687,7 +726,7 @@ export default function App() {
               Education
             </button>
             {portfolioData.blogs?.active && (
-              <button onClick={() => navigateTo("/blogs")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
+              <button onClick={() => navigateTo("/blog")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
                 Blogs
               </button>
             )}
@@ -702,9 +741,7 @@ export default function App() {
       </header>
 
       {/* ================= CONDITIONAL ROUTE VIEW RESOLVER ================= */}
-      {routeState.view === "404" ? (
-        <NotFound404 onNavigate={(p) => navigateTo(p)} />
-      ) : routeState.view === "blogs" ? (
+      {routeState.view === "blogs" ? (
         <BlogEditorialPage 
           blogs={portfolioData.blogs?.list || []}
           onSelectBlog={(b) => navigateTo(`/blog/${b.slug || b.id}`)}
@@ -714,7 +751,7 @@ export default function App() {
         <BlogReaderPage 
           blog={routeState.blog}
           allBlogs={portfolioData.blogs?.list || []}
-          onNavigateBack={() => navigateTo("/blogs")}
+          onNavigateBack={() => navigateTo("/blog")}
           onSelectBlog={(b) => navigateTo(`/blog/${b.slug || b.id}`)}
         />
       ) : (
