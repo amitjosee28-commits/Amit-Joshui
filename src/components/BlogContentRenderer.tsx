@@ -28,7 +28,7 @@ function sanitizeHtml(html: string): string {
 function isHtmlContent(text: string): boolean {
   if (!text) return false;
   const trimmed = text.trim();
-  const htmlTagPattern = /<\/?(p|br|h[1-6]|strong|b|em|i|u|ul|ol|li|blockquote|a|img|div|span|table|pre|code)\b[^>]*>/i;
+  const htmlTagPattern = /<\/?(p|br|h[1-6]|strong|b|em|i|u|s|del|strike|sub|sup|mark|ul|ol|li|blockquote|a|img|div|span|table|thead|tbody|tr|th|td|pre|code|hr|input|label)\b[^>]*>/i;
   return htmlTagPattern.test(trimmed);
 }
 

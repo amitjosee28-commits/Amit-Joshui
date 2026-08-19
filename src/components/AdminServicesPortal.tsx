@@ -2177,15 +2177,104 @@ export default function AdminServicesPortal() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-gray-400 uppercase font-bold">Role</label>
+                      <label className="text-gray-400 uppercase font-bold">Role & Account Type</label>
                       <select
                         value={userForm.role}
                         onChange={(e) => setUserForm({ ...userForm, role: e.target.value as any })}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-amber-400 focus:border-amber-500 outline-none"
                       >
-                        <option value="super_admin">Super Admin (All Capabilities)</option>
-                        <option value="services_admin">Services Admin</option>
+                        <option value="super_admin">Super Admin (Unrestricted Full Access)</option>
+                        <option value="services_admin">Services Admin (Granular Permissions Below)</option>
                       </select>
+                    </div>
+
+                    {/* Fine-Grained Permissions Matrix */}
+                    <div className="space-y-2 pt-2 border-t border-white/10">
+                      <label className="text-amber-400 uppercase font-bold text-[11px] block">
+                        Access Control & Permissions
+                      </label>
+                      
+                      <div className="space-y-2 bg-slate-950/80 p-3 rounded-xl border border-white/5">
+                        <label className="flex items-center space-x-2.5 cursor-pointer text-xs text-gray-200">
+                          <input
+                            type="checkbox"
+                            checked={userForm.permissions?.serviceRequests ?? true}
+                            onChange={(e) => setUserForm(prev => ({
+                              ...prev,
+                              permissions: {
+                                ...(prev.permissions || { suggestions: true, newsletter: true, serviceConfiguration: true, billing: true }),
+                                serviceRequests: e.target.checked
+                              }
+                            }))}
+                            className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
+                          />
+                          <span>View & Manage Service Submissions</span>
+                        </label>
+
+                        <label className="flex items-center space-x-2.5 cursor-pointer text-xs text-gray-200">
+                          <input
+                            type="checkbox"
+                            checked={userForm.permissions?.billing ?? true}
+                            onChange={(e) => setUserForm(prev => ({
+                              ...prev,
+                              permissions: {
+                                ...(prev.permissions || { serviceRequests: true, suggestions: true, newsletter: true, serviceConfiguration: true }),
+                                billing: e.target.checked
+                              }
+                            }))}
+                            className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
+                          />
+                          <span>View & Edit Invoices / 12h Billing</span>
+                        </label>
+
+                        <label className="flex items-center space-x-2.5 cursor-pointer text-xs text-gray-200">
+                          <input
+                            type="checkbox"
+                            checked={userForm.permissions?.suggestions ?? true}
+                            onChange={(e) => setUserForm(prev => ({
+                              ...prev,
+                              permissions: {
+                                ...(prev.permissions || { serviceRequests: true, newsletter: true, serviceConfiguration: true, billing: true }),
+                                suggestions: e.target.checked
+                              }
+                            }))}
+                            className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
+                          />
+                          <span>View & Process Suggestions / Feedback</span>
+                        </label>
+
+                        <label className="flex items-center space-x-2.5 cursor-pointer text-xs text-gray-200">
+                          <input
+                            type="checkbox"
+                            checked={userForm.permissions?.newsletter ?? true}
+                            onChange={(e) => setUserForm(prev => ({
+                              ...prev,
+                              permissions: {
+                                ...(prev.permissions || { serviceRequests: true, suggestions: true, serviceConfiguration: true, billing: true }),
+                                newsletter: e.target.checked
+                              }
+                            }))}
+                            className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
+                          />
+                          <span>View & Export Newsletter Subscribers</span>
+                        </label>
+
+                        <label className="flex items-center space-x-2.5 cursor-pointer text-xs text-gray-200">
+                          <input
+                            type="checkbox"
+                            checked={userForm.permissions?.serviceConfiguration ?? true}
+                            onChange={(e) => setUserForm(prev => ({
+                              ...prev,
+                              permissions: {
+                                ...(prev.permissions || { serviceRequests: true, suggestions: true, newsletter: true, billing: true }),
+                                serviceConfiguration: e.target.checked
+                              }
+                            }))}
+                            className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
+                          />
+                          <span>Configure Services & Dynamic Form Builder</span>
+                        </label>
+                      </div>
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-white/10">

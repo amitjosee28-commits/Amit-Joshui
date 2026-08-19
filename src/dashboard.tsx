@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import NetworkCanvas from "./components/NetworkCanvas";
 import BlogContentRenderer from "./components/BlogContentRenderer";
+import RichBlogEditor from "./components/RichBlogEditor";
 
 import "./index.css";
 
@@ -1964,94 +1965,20 @@ export default function Dashboard() {
                       )}
                     </div>
 
-                    {/* Rich Text Body Content */}
+                    {/* Rich Text Body Content with Advanced Editor */}
                     <div className="space-y-2 md:col-span-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
-                          Article Body Content ({activeLangTab.toUpperCase()}) <span className="text-red-400">*</span>
-                        </label>
-                        <div className="flex items-center space-x-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const field = activeLangTab === "en" ? "contentEn" : "contentNp";
-                              setBlogForm(prev => ({ ...prev, [field]: prev[field] + "\n\n**Bold Text**" }));
-                            }}
-                            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-gray-300 text-[10px] font-mono font-bold"
-                          >
-                            B
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const field = activeLangTab === "en" ? "contentEn" : "contentNp";
-                              setBlogForm(prev => ({ ...prev, [field]: prev[field] + "\n\n*Italic Text*" }));
-                            }}
-                            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-gray-300 text-[10px] font-mono font-bold italic"
-                          >
-                            I
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const field = activeLangTab === "en" ? "contentEn" : "contentNp";
-                              setBlogForm(prev => ({ ...prev, [field]: prev[field] + "\n\n### Subheading Title" }));
-                            }}
-                            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-gray-300 text-[10px] font-mono font-bold"
-                          >
-                            H3
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const field = activeLangTab === "en" ? "contentEn" : "contentNp";
-                              setBlogForm(prev => ({ ...prev, [field]: prev[field] + "\n\n- Key bullet point 1\n- Key bullet point 2" }));
-                            }}
-                            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-gray-300 text-[10px] font-mono font-bold"
-                          >
-                            List
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const field = activeLangTab === "en" ? "contentEn" : "contentNp";
-                              setBlogForm(prev => ({ ...prev, [field]: prev[field] + "\n\n> Important quote or callout block" }));
-                            }}
-                            className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-gray-300 text-[10px] font-mono font-bold"
-                          >
-                            Quote
-                          </button>
-                        </div>
-                      </div>
-                      <textarea
-                        rows={10}
+                      <label className="text-gray-400 text-[11px] font-bold uppercase tracking-wider block">
+                        Article Body Content ({activeLangTab.toUpperCase()}) <span className="text-red-400">*</span>
+                      </label>
+                      <RichBlogEditor
                         value={activeLangTab === "en" ? blogForm.contentEn : blogForm.contentNp}
-                        onChange={(e) => {
-                          const val = e.target.value;
+                        onChange={(val) => {
                           if (activeLangTab === "en") setBlogForm(prev => ({ ...prev, contentEn: val }));
                           else setBlogForm(prev => ({ ...prev, contentNp: val }));
                         }}
                         placeholder={activeLangTab === "en" ? "Write or paste article paragraphs, exact newlines, blank lines, lists, markdown formatting, insights, code snippets..." : "लेखको विस्तृत विवरण लेख्नुहोस्..."}
-                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500 font-sans text-xs leading-relaxed"
+                        lang={activeLangTab}
                       />
-
-                      {/* Live Exact User Formatting Preview Box */}
-                      <div className="mt-3 p-4 rounded-xl bg-black/60 border border-cyan-500/20 space-y-2">
-                        <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                          <span className="text-[11px] font-mono font-bold uppercase text-cyan-400 flex items-center space-x-1.5">
-                            <Sparkles className="h-3.5 w-3.5" />
-                            <span>Live Exact Formatting Preview ({activeLangTab.toUpperCase()})</span>
-                          </span>
-                          <span className="text-[10px] font-mono text-gray-500">
-                            Preserves exact newlines, blank lines & lists
-                          </span>
-                        </div>
-                        <div className="max-h-60 overflow-y-auto pr-2 text-xs text-gray-200">
-                          <BlogContentRenderer 
-                            content={activeLangTab === "en" ? blogForm.contentEn : blogForm.contentNp} 
-                          />
-                        </div>
-                      </div>
                     </div>
                   </div>
 
