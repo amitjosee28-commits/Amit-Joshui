@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ref, onValue } from "firebase/database";
+import { ref, onValue, runTransaction } from "firebase/database";
 import { db } from "./firebase";
 import { defaultPortfolioData, PortfolioData } from "./utils/defaultData";
 import { getNepalBSAndGregorian } from "./utils/date";
@@ -302,6 +302,7 @@ export default function App() {
           }),
         };
         setPortfolioData(mergedVal);
+        setRouteState(resolveRoute(mergedVal));
         try {
           localStorage.setItem("amit_portfolio_cache_v1", JSON.stringify(mergedVal));
         } catch (e) {
@@ -316,10 +317,24 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Increment total visits counter once on boot and keep track of live count
+  // Increment total visits counter dynamically on boot and keep track of live count
   useEffect(() => {
     try {
       const statsRef = ref(db, "site_stats/visits");
+      
+      // Increment once per user session
+      if (typeof window !== "undefined" && !sessionStorage.getItem("amit_visited_session")) {
+        sessionStorage.setItem("amit_visited_session", "true");
+        runTransaction(statsRef, (currentVal) => {
+          if (typeof currentVal === "number" && currentVal > 0) {
+            return currentVal + 1;
+          }
+          return 343;
+        }).catch((err) => {
+          console.warn("Visitor counter transaction notice:", err);
+        });
+      }
+
       const unsubscribe = onValue(
         statsRef,
         (snapshot) => {
@@ -327,7 +342,7 @@ export default function App() {
           if (val && typeof val === "number") {
             setVisitCount(val);
           } else {
-            setVisitCount(1860);
+            setVisitCount(342);
           }
         },
         (error) => {
@@ -992,7 +1007,7 @@ export default function App() {
                 </span>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed font-sans">
-                Engineering modern full-stack web architectures with precise localized experiences.
+                Official website of Amit Joshi a student with a strong passion for technology, web development, and digital design. I believe that technology is more than just a field of study—it is a powerful tool for creativity, innovation, and solving real-world problems. I enjoy building digital products that are not only functional but also visually appealing, user-friendly, and professionally designed. Every project I work on is an opportunity to learn something new, improve my skills, and challenge myself to become a better developer and designer.
               </p>
             </div>
 

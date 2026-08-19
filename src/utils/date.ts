@@ -204,16 +204,14 @@ export function formatBlogTimestamp(dateStr?: string, timeStr?: string): string 
   return cleanTime ? `${cleanDate} ${cleanTime}` : cleanDate;
 }
 
-export function formatBlogLocationDate(dateStr: string): { dateStr: string; location: string } {
-  const location = 'Kathmandu, Nepal';
+export function formatBlogLocationDate(dateStr?: string): string {
+  if (!dateStr) return "";
+  const location = "Kathmandu, Nepal";
   const formattedDate = formatBlogDate(dateStr);
   const parsed = new Date(dateStr);
   const bsYr = !isNaN(parsed.getTime())
     ? (parsed.getFullYear() + (parsed.getMonth() < 3 || (parsed.getMonth() === 3 && parsed.getDate() < 14) ? 56 : 57))
     : 2083;
   
-  return {
-    dateStr: `${formattedDate} (${bsYr} BS)`,
-    location
-  };
+  return `${formattedDate} (${bsYr} BS) • ${location}`;
 }

@@ -822,80 +822,92 @@ export default function AdminServicesPortal() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
         
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs with Permissions Enforcement */}
         <div className="flex flex-wrap p-1.5 bg-slate-900 border border-slate-800 rounded-2xl gap-1 shadow-lg overflow-x-auto">
           
-          <button
-            onClick={() => { setActiveTab("services"); setSelectedItem(null); }}
-            className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === "services"
-                ? "bg-amber-500 text-slate-950 shadow-lg"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
-          >
-            <Sliders className="w-4 h-4" />
-            <span>Service & Questions Builder ({allServices.length})</span>
-          </button>
+          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.serviceConfiguration !== false) && (
+            <button
+              onClick={() => { setActiveTab("services"); setSelectedItem(null); }}
+              className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "services"
+                  ? "bg-amber-500 text-slate-950 shadow-lg"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              <span>Service & Questions Builder ({allServices.length})</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => { setActiveTab("applications"); setSelectedItem(null); }}
-            className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === "applications"
-                ? "bg-amber-500 text-slate-950 shadow-lg"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Submissions ({applications.length})</span>
-          </button>
+          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.serviceRequests !== false) && (
+            <button
+              onClick={() => { setActiveTab("applications"); setSelectedItem(null); }}
+              className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "applications"
+                  ? "bg-amber-500 text-slate-950 shadow-lg"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Submissions ({applications.length})</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => { setActiveTab("invoices"); setSelectedItem(null); }}
-            className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === "invoices"
-                ? "bg-amber-500 text-slate-950 shadow-lg"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
-          >
-            <Receipt className="w-4 h-4" />
-            <span>Invoices & 12h Billing ({invoices.length})</span>
-          </button>
+          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.billing !== false) && (
+            <button
+              onClick={() => { setActiveTab("invoices"); setSelectedItem(null); }}
+              className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "invoices"
+                  ? "bg-amber-500 text-slate-950 shadow-lg"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+              }`}
+            >
+              <Receipt className="w-4 h-4" />
+              <span>Invoices & 12h Billing ({invoices.length})</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => { setActiveTab("suggestions"); setSelectedItem(null); }}
-            className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === "suggestions"
-                ? "bg-amber-500 text-slate-950 shadow-lg"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>Suggestions & Feedback ({suggestions.length})</span>
-          </button>
+          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.suggestions !== false) && (
+            <button
+              onClick={() => { setActiveTab("suggestions"); setSelectedItem(null); }}
+              className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "suggestions"
+                  ? "bg-amber-500 text-slate-950 shadow-lg"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Suggestions & Feedback ({suggestions.length})</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => { setActiveTab("subscribers"); setSelectedItem(null); }}
-            className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === "subscribers"
-                ? "bg-amber-500 text-slate-950 shadow-lg"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
-          >
-            <Mail className="w-4 h-4" />
-            <span>Newsletter Subscribers ({subscribers.length})</span>
-          </button>
+          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.newsletter !== false) && (
+            <button
+              onClick={() => { setActiveTab("subscribers"); setSelectedItem(null); }}
+              className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "subscribers"
+                  ? "bg-amber-500 text-slate-950 shadow-lg"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+              }`}
+            >
+              <Mail className="w-4 h-4" />
+              <span>Newsletter Subscribers ({subscribers.length})</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => { setActiveTab("rbac"); setSelectedItem(null); }}
-            className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === "rbac"
-                ? "bg-amber-500 text-slate-950 shadow-lg"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Admin Users & PINs</span>
-          </button>
+          {currentUserInfo?.role === "super_admin" && (
+            <button
+              onClick={() => { setActiveTab("rbac"); setSelectedItem(null); }}
+              className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "rbac"
+                  ? "bg-amber-500 text-slate-950 shadow-lg"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Admin Users & PINs</span>
+            </button>
+          )}
         </div>
 
         {/* ---------------------------------------------------- */}

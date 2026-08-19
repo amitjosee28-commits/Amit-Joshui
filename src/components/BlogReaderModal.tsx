@@ -222,7 +222,7 @@ export default function BlogReaderModal({ isOpen, blog, onClose }: BlogReaderMod
               <span className="text-amber-600 dark:text-amber-400 font-bold">{author}</span>
             </div>
             <div>
-              <span>{dateAndLocation.location}</span>
+              <span>{dateAndLocation || "Kathmandu, Nepal"}</span>
             </div>
           </div>
 
