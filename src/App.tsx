@@ -427,15 +427,18 @@ export default function App() {
 
   // 2. Favicon updater
   useEffect(() => {
-    const faviconUrl = portfolioData.header?.faviconUrl || defaultPortfolioData.header.faviconUrl;
-    if (faviconUrl) {
-      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-      if (!link) {
-        link = document.createElement("link");
-        link.rel = "icon";
-        document.getElementsByTagName("head")[0].appendChild(link);
-      }
+    let faviconUrl = portfolioData.header?.faviconUrl || defaultPortfolioData.header.faviconUrl || "/Favicon.jpeg";
+    if (faviconUrl.includes("534528741775") || !faviconUrl) {
+      faviconUrl = "/Favicon.jpeg";
+    }
+    const links = document.querySelectorAll("link[rel*='icon']");
+    if (links.length > 0) {
+      links.forEach((l) => ((l as HTMLLinkElement).href = faviconUrl));
+    } else {
+      const link = document.createElement("link");
+      link.rel = "icon";
       link.href = faviconUrl;
+      document.getElementsByTagName("head")[0].appendChild(link);
     }
   }, [portfolioData.header?.faviconUrl]);
 

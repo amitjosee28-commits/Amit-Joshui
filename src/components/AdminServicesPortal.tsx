@@ -1080,7 +1080,7 @@ export default function AdminServicesPortal() {
               }`}
             >
               <Receipt className="w-4 h-4" />
-              <span>Invoices & 12h Billing ({invoices.length})</span>
+              <span>Invoices & Billing ({invoices.length})</span>
             </button>
           )}
 
@@ -2053,10 +2053,10 @@ export default function AdminServicesPortal() {
               <div>
                 <h2 className="text-xl font-bold font-serif text-white flex items-center gap-2">
                   <Receipt className="w-5 h-5 text-amber-400" />
-                  <span>Invoices & 12-Hour Billing Ledger ({invoices.length})</span>
+                  <span>Invoices & Billing Ledger ({invoices.length})</span>
                 </h2>
                 <p className="text-xs text-slate-400 font-mono mt-1">
-                  Manage digital receipts, 12-hour payment countdowns, and export official printable invoices.
+                  Manage digital receipts, verify payments, and export official printable invoices.
                 </p>
               </div>
 
@@ -2095,7 +2095,7 @@ export default function AdminServicesPortal() {
                       <th className="py-3 px-3">Client Details</th>
                       <th className="py-3 px-3">Service</th>
                       <th className="py-3 px-3">Amount</th>
-                      <th className="py-3 px-3">12h Due Date / Status</th>
+                      <th className="py-3 px-3">Status</th>
                       <th className="py-3 px-3">Payment</th>
                       <th className="py-3 px-3 text-right">Actions</th>
                     </tr>

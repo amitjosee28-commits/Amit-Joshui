@@ -37,41 +37,8 @@ export default function InvoiceView({
 }: InvoiceViewProps) {
   const [copiedEsewa, setCopiedEsewa] = useState(false);
   const [copiedKhalti, setCopiedKhalti] = useState(false);
-  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number; isExpired: boolean }>({
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-    isExpired: false
-  });
 
-  // Calculate live countdown for 12-hour payment deadline
-  useEffect(() => {
-    const calculateTime = () => {
-      const dueTime = new Date(invoice.paymentDueAt).getTime();
-      const now = new Date().getTime();
-      const diff = dueTime - now;
-
-      if (diff <= 0) {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, isExpired: true });
-      } else {
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setTimeLeft({ hours, minutes, seconds, isExpired: false });
-      }
-    };
-
-    calculateTime();
-    const interval = setInterval(calculateTime, 1000);
-    return () => clearInterval(interval);
-  }, [invoice.paymentDueAt]);
-
-  const effectiveStatus = 
-    invoice.paymentStatus === "Paid" 
-      ? "Paid" 
-      : timeLeft.isExpired 
-      ? "Expired" 
-      : invoice.paymentStatus;
+  const effectiveStatus = invoice.paymentStatus || "Pending";
 
   const handlePrint = () => {
     window.print();
@@ -131,47 +98,6 @@ export default function InvoiceView({
           </div>
         </div>
 
-        {/* 12-Hour Payment Deadline Countdown Alert Box */}
-        {effectiveStatus === "Pending" && (
-          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-300 print:hidden">
-            <div className="flex items-center space-x-3">
-              <Clock className="h-6 w-6 text-amber-400 animate-pulse shrink-0" />
-              <div>
-                <p className="text-sm font-bold">
-                  {lang === "np" ? "१२ घण्टे भुक्तानी समयसीमा सक्रिय छ" : "12-Hour Payment Window Active"}
-                </p>
-                <p className="text-xs text-amber-300/80 font-mono">
-                  {lang === "np"
-                    ? `फारम पेश गरेको १२ घण्टाभित्र भुक्तानी पुष्टि गर्नुहोस् (${new Date(invoice.paymentDueAt).toLocaleTimeString()})`
-                    : `Please complete payment within 12 hours of submission (Due: ${new Date(invoice.paymentDueAt).toLocaleTimeString()}, ${new Date(invoice.paymentDueAt).toLocaleDateString()})`}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2 font-mono text-sm font-black bg-black/40 px-4 py-2 rounded-xl border border-amber-500/30 text-amber-400">
-              <span>{String(timeLeft.hours).padStart(2, "0")}h</span>
-              <span>:</span>
-              <span>{String(timeLeft.minutes).padStart(2, "0")}m</span>
-              <span>:</span>
-              <span>{String(timeLeft.seconds).padStart(2, "0")}s</span>
-            </div>
-          </div>
-        )}
-
-        {effectiveStatus === "Expired" && (
-          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center space-x-3 text-rose-300 print:hidden">
-            <AlertTriangle className="h-6 w-6 text-rose-400 shrink-0" />
-            <div>
-              <p className="text-sm font-bold">{lang === "np" ? "समयसीमा समाप्त भएको छ" : "12-Hour Payment Deadline Expired"}</p>
-              <p className="text-xs text-rose-300/80">
-                {lang === "np"
-                  ? "यस आवेदनको लागि १२ घण्टाको भुक्तानी अवधि सकिएको छ। कृपया पुनः आवेदन दिनुहोस् वा सिधै सम्पर्क गर्नुहोस्।"
-                  : "The 12-hour validity period has lapsed. Please submit a fresh request or reach out via official contact."}
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Printable Official Invoice Card */}
         <div className="bg-slate-900 border border-white/10 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8 print:border-none print:shadow-none print:p-0 print:bg-transparent print:text-black">
           
@@ -219,7 +145,7 @@ export default function InvoiceView({
                 <p><span className="font-bold text-white print:text-black">Invoice No:</span> {invoice.invoiceId}</p>
                 <p><span className="font-bold text-white print:text-black">Req Ref:</span> {invoice.submissionId}</p>
                 <p><span className="font-bold text-white print:text-black">Date Issued:</span> {new Date(invoice.submittedAt).toLocaleDateString()}</p>
-                <p><span className="font-bold text-white print:text-black">12h Due Date:</span> {new Date(invoice.paymentDueAt).toLocaleTimeString()}, {new Date(invoice.paymentDueAt).toLocaleDateString()}</p>
+                <p><span className="font-bold text-white print:text-black">Status:</span> {effectiveStatus}</p>
               </div>
             </div>
           </div>
@@ -348,7 +274,7 @@ export default function InvoiceView({
           {/* Footer Terms */}
           <div className="pt-6 border-t border-white/5 print:border-black/10 text-[11px] text-gray-500 print:text-black/60 space-y-1">
             <p className="font-bold text-gray-400 print:text-black">Official Notice & Terms:</p>
-            <p>1. This invoice is subject to a strict 12-hour payment confirmation cycle from initial request submission.</p>
+            <p>1. Please complete payment or transaction verification to proceed with your service request.</p>
             <p>2. Once payment is confirmed, an engineering kickoff consultation will be initiated within 24 business hours.</p>
             <p>3. For direct questions or verification, contact Amit Joshi via WhatsApp (+977 9800000000) or email amit@amitjoshi.info.np.</p>
           </div>

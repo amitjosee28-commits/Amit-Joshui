@@ -222,17 +222,10 @@ export default function StatusCheckerModal({
     }
   };
 
-  // 12-Hour Countdown calculation
-  const getDeadlineText = (dueAtStr?: string, paymentStatus?: string) => {
+  // Payment Status helper
+  const getDeadlineText = (_dueAtStr?: string, paymentStatus?: string) => {
     if (paymentStatus === "Paid") return "Paid & Verified";
-    if (!dueAtStr) return "Standard Window";
-
-    const diff = new Date(dueAtStr).getTime() - Date.now();
-    if (diff <= 0) return "12h Window Expired / Overdue";
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m remaining`;
+    return "Payment Pending";
   };
 
   return (
@@ -327,13 +320,13 @@ export default function StatusCheckerModal({
               </div>
             </div>
 
-            {/* 12-Hour Payment Banner (If Service) */}
+            {/* Payment Banner (If Service) */}
             {type === "service" && (
               <div className="p-4 bg-black/40 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
                 <div>
-                  <span className="text-[10px] text-gray-400 uppercase font-bold block">12-Hour Payment Status</span>
+                  <span className="text-[10px] text-gray-400 uppercase font-bold block">Payment Status</span>
                   <span className={`font-bold ${result.paymentStatus === "Paid" ? "text-emerald-400" : "text-amber-400"}`}>
-                    {result.paymentStatus || "Pending"} &bull; {getDeadlineText(result.paymentDueAt, result.paymentStatus)}
+                    {result.paymentStatus || "Pending"}
                   </span>
                 </div>
 

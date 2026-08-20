@@ -338,7 +338,7 @@ export default function ServicesSection({
               Services, Consultations & Requisitions
             </h2>
             <p className="text-gray-400 mt-2 text-sm max-w-2xl">
-              Apply for software architecture, compliance, cyber security, and technology consultations with 12-hour instant invoice tracking.
+              Apply for software architecture, compliance, cyber security, and technology consultations.
             </p>
           </div>
 
@@ -480,7 +480,7 @@ export default function ServicesSection({
                 {selectedService.titleEn}
               </h3>
               <p className="text-xs text-gray-400 font-mono">
-                Standard Fee: <strong className="text-cyan-300">{selectedService.priceEn}</strong> &bull; 12-Hour Confirmation Window
+                Standard Fee: <strong className="text-cyan-300">{selectedService.priceEn}</strong>
               </p>
             </div>
 
@@ -509,14 +509,14 @@ export default function ServicesSection({
                   </button>
                 </div>
 
-                {/* 12-Hour Payment Notice */}
+                {/* Payment Notice */}
                 <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-left text-xs font-mono text-amber-300 space-y-1 max-w-md mx-auto">
                   <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider">
-                    <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
-                    <span>12-Hour Payment Window Active</span>
+                    <Clock className="w-4 h-4 text-amber-400" />
+                    <span>Payment & Confirmation</span>
                   </div>
                   <p className="text-[11px] text-amber-200/80">
-                    Please complete payment settlement via eSewa or Khalti within 12 hours. Use invoice #{generatedInvoice?.invoiceId || generatedRequestId} as reference.
+                    You can complete payment settlement via eSewa or Khalti using invoice #{generatedInvoice?.invoiceId || generatedRequestId} as reference.
                   </p>
                 </div>
 
