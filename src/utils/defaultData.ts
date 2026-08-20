@@ -41,12 +41,142 @@ export interface ToolItem {
 }
 
 export interface ServiceAdminPermissions {
-  serviceRequests: boolean;
-  suggestions: boolean;
-  newsletter: boolean;
-  serviceConfiguration: boolean;
-  billing: boolean;
+  // Newsletter
+  viewNewsletter?: boolean;
+  exportNewsletter?: boolean;
+  deleteNewsletter?: boolean;
+  newsletter?: boolean; // legacy compatibility
+
+  // Bills
+  viewBills?: boolean;
+  editBills?: boolean;
+  createBills?: boolean;
+  deleteBills?: boolean;
+  billing?: boolean; // legacy compatibility
+
+  // Services Forms / Submissions
+  viewServiceForms?: boolean;
+  createServiceForms?: boolean;
+  editServiceForms?: boolean;
+  deleteServiceForms?: boolean;
+  downloadServiceData?: boolean;
+  viewServiceSubmissions?: boolean;
+  editServiceSubmissions?: boolean;
+  deleteServiceSubmissions?: boolean;
+  downloadServiceSubmissions?: boolean;
+  addRemarksServices?: boolean;
+  modifyServiceBill?: boolean;
+  changeStatusServices?: boolean;
+  serviceRequests?: boolean; // legacy compatibility
+
+  // Suggestions
+  viewSuggestions?: boolean;
+  addRemarksSuggestions?: boolean;
+  changeStatusSuggestions?: boolean;
+  deleteSuggestions?: boolean;
+  suggestions?: boolean; // legacy compatibility
+
+  // Service Management / Form Builder
+  createServiceQuestions?: boolean;
+  editServiceQuestions?: boolean;
+  manageServiceConfig?: boolean;
+  serviceConfiguration?: boolean; // legacy compatibility
+
+  // User Administration
+  manageUsers?: boolean;
 }
+
+export const checkUserPermission = (
+  user: ServiceAdminUser | null | undefined,
+  action: keyof ServiceAdminPermissions | "all"
+): boolean => {
+  if (!user) return false;
+  if (user.role === "super_admin" || user.role === "cms_admin") return true;
+  if (user.status === "restricted" || user.status === "frozen") return false;
+  if (action === "all") return true;
+
+  const perms = user.permissions;
+  if (!perms) return false;
+
+  switch (action) {
+    case "viewNewsletter":
+    case "newsletter":
+      return perms.viewNewsletter !== false && perms.newsletter !== false;
+    case "exportNewsletter":
+      return perms.exportNewsletter !== false && perms.newsletter !== false;
+    case "deleteNewsletter":
+      return perms.deleteNewsletter !== false && perms.newsletter !== false;
+
+    case "viewBills":
+      return perms.viewBills !== false && perms.billing !== false;
+    case "editBills":
+      return perms.editBills !== false && perms.billing !== false;
+    case "createBills":
+      return perms.createBills !== false && perms.billing !== false;
+    case "deleteBills":
+      return perms.deleteBills !== false && perms.billing !== false;
+    case "billing":
+      return perms.billing !== false || perms.viewBills === true;
+
+    case "viewServiceForms":
+    case "viewServiceSubmissions":
+    case "serviceRequests":
+      return perms.viewServiceSubmissions !== false && perms.viewServiceForms !== false && perms.serviceRequests !== false;
+    case "createServiceForms":
+      return perms.createServiceForms !== false && perms.serviceConfiguration !== false;
+    case "editServiceForms":
+      return perms.editServiceForms !== false && perms.serviceConfiguration !== false;
+    case "deleteServiceForms":
+      return perms.deleteServiceForms !== false && perms.serviceConfiguration !== false;
+
+    case "editServiceSubmissions":
+      return perms.editServiceSubmissions !== false && perms.serviceRequests !== false;
+    case "deleteServiceSubmissions":
+      return perms.deleteServiceSubmissions !== false && perms.serviceRequests !== false;
+
+    case "downloadServiceData":
+    case "downloadServiceSubmissions":
+      return perms.downloadServiceSubmissions !== false && perms.downloadServiceData !== false;
+
+    case "addRemarksServices":
+      return perms.addRemarksServices !== false;
+
+    case "modifyServiceBill":
+      return perms.modifyServiceBill !== false || perms.editBills !== false;
+
+    case "changeStatusServices":
+      return perms.changeStatusServices !== false;
+
+    case "viewSuggestions":
+    case "suggestions":
+      return perms.viewSuggestions !== false && perms.suggestions !== false;
+
+    case "addRemarksSuggestions":
+      return perms.addRemarksSuggestions !== false;
+
+    case "changeStatusSuggestions":
+      return perms.changeStatusSuggestions !== false;
+
+    case "deleteSuggestions":
+      return perms.deleteSuggestions !== false && perms.suggestions !== false;
+
+    case "createServiceQuestions":
+      return perms.createServiceQuestions !== false && perms.serviceConfiguration !== false;
+
+    case "editServiceQuestions":
+      return perms.editServiceQuestions !== false && perms.serviceConfiguration !== false;
+
+    case "manageServiceConfig":
+    case "serviceConfiguration":
+      return perms.manageServiceConfig !== false && perms.serviceConfiguration !== false;
+
+    case "manageUsers":
+      return perms.manageUsers === true;
+
+    default:
+      return (perms as any)[action] !== false;
+  }
+};
 
 export interface ServiceAdminUser {
   id: string;

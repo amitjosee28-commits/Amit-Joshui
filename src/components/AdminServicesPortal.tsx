@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ref, get, set, update, onValue } from "firebase/database";
 import { db } from "../firebase";
-import { defaultPortfolioData, PortfolioData, ServiceAdminUser, ServiceInvoice, ServiceItem, ServiceQuestion, ServiceFieldType } from "../utils/defaultData";
+import { defaultPortfolioData, PortfolioData, ServiceAdminUser, ServiceInvoice, ServiceItem, ServiceQuestion, ServiceFieldType, checkUserPermission } from "../utils/defaultData";
 import { 
   Lock, User, Key, MessageSquare, Inbox, Phone, Mail, 
   Trash2, CheckCircle2, Clock, FileText, Image as ImageIcon, 
@@ -9,7 +9,7 @@ import {
   Filter, Users, Copy, Check, DownloadCloud, ArrowUpDown, Send,
   Receipt, DollarSign, Calendar, Plus, Edit2, Shield, UserPlus, Eye,
   Sliders, Settings, ArrowUp, ArrowDown, ExternalLink, HelpCircle,
-  X, CheckSquare, ListPlus, Printer, AlertTriangle
+  X, CheckSquare, ListPlus, Printer, AlertTriangle, Edit3
 } from "lucide-react";
 import InvoiceView from "./InvoiceView";
 
@@ -44,6 +44,8 @@ export default function AdminServicesPortal() {
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [viewingInvoice, setViewingInvoice] = useState<ServiceInvoice | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<ServiceInvoice | null>(null);
+  const [isEditingInvoiceModalOpen, setIsEditingInvoiceModalOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [toastMsg, setToastMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -65,11 +67,30 @@ export default function AdminServicesPortal() {
     role: "services_admin",
     status: "active",
     permissions: {
-      serviceRequests: true,
-      suggestions: true,
-      newsletter: true,
-      serviceConfiguration: true,
-      billing: true
+      viewServicesAdmin: true,
+      viewServiceForms: true,
+      createServiceForms: true,
+      editServiceForms: true,
+      deleteServiceForms: false,
+      viewServiceSubmissions: true,
+      editServiceSubmissions: true,
+      deleteServiceSubmissions: false,
+      changeStatusServices: true,
+      addRemarksServices: true,
+      viewBills: true,
+      editBills: true,
+      createBills: true,
+      deleteBills: false,
+      modifyServiceBill: true,
+      downloadServiceSubmissions: true,
+      viewSuggestions: true,
+      deleteSuggestions: false,
+      changeStatusSuggestions: true,
+      addRemarksSuggestions: true,
+      viewNewsletter: true,
+      deleteNewsletter: false,
+      exportNewsletter: true,
+      manageUsers: false
     }
   });
 
@@ -239,6 +260,10 @@ export default function AdminServicesPortal() {
   // SERVICE & DYNAMIC QUESTIONS BUILDER HANDLERS
   // ----------------------------------------------------
   const handleSaveAllServices = async (updatedServices: ServiceItem[]) => {
+    if (!checkUserPermission(currentUserInfo, "editServiceForms")) {
+      showToast("Access Denied: You lack permission to modify service forms.", "error");
+      return;
+    }
     try {
       await set(ref(db, "portfolio/services"), updatedServices);
       setPortfolioData(prev => ({ ...prev, services: updatedServices }));
@@ -250,6 +275,10 @@ export default function AdminServicesPortal() {
   };
 
   const handleCreateNewService = () => {
+    if (!checkUserPermission(currentUserInfo, "createServiceForms")) {
+      showToast("Access Denied: You lack permission to create new service forms.", "error");
+      return;
+    }
     const newService: ServiceItem = {
       id: `serv-${Date.now().toString(36)}`,
       titleEn: "New Professional Service",
@@ -301,6 +330,13 @@ export default function AdminServicesPortal() {
   };
 
   const handleSaveServiceForm = async (serviceToSave: ServiceItem) => {
+    const isNew = !portfolioData.services?.some(s => s.id === serviceToSave.id);
+    const requiredPermission = isNew ? "createServiceForms" : "editServiceForms";
+    if (!checkUserPermission(currentUserInfo, requiredPermission)) {
+      showToast(`Access Denied: You lack permission to ${isNew ? "create" : "edit"} service forms.`, "error");
+      return;
+    }
+
     const currentServices = [...(portfolioData.services || defaultPortfolioData.services)];
     const existingIndex = currentServices.findIndex(s => s.id === serviceToSave.id);
 
@@ -316,6 +352,10 @@ export default function AdminServicesPortal() {
   };
 
   const handleDeleteService = async (serviceId: string) => {
+    if (!checkUserPermission(currentUserInfo, "deleteServiceForms")) {
+      showToast("Access Denied: You lack permission to delete service forms.", "error");
+      return;
+    }
     if (!window.confirm("Are you sure you want to permanently delete this service and all its configured questions?")) return;
     const updated = (portfolioData.services || defaultPortfolioData.services).filter(s => s.id !== serviceId);
     await handleSaveAllServices(updated);
@@ -324,6 +364,10 @@ export default function AdminServicesPortal() {
 
   // Add Question to currently editing service
   const handleAddQuestionToService = (fieldType: ServiceFieldType = "short_text") => {
+    if (!checkUserPermission(currentUserInfo, "editServiceForms")) {
+      showToast("Access Denied: You lack permission to modify questions.", "error");
+      return;
+    }
     if (!editingService) return;
     const currentQuestions = editingService.questions ? [...editingService.questions] : [];
     const newOrder = currentQuestions.length + 1;
@@ -348,6 +392,10 @@ export default function AdminServicesPortal() {
   };
 
   const handleUpdateQuestion = (updatedQ: ServiceQuestion) => {
+    if (!checkUserPermission(currentUserInfo, "editServiceForms")) {
+      showToast("Access Denied: You lack permission to modify questions.", "error");
+      return;
+    }
     if (!editingService || !editingService.questions) return;
     const updatedQuestions = editingService.questions.map(q => q.id === updatedQ.id ? updatedQ : q);
     setEditingService({ ...editingService, questions: updatedQuestions });
@@ -355,6 +403,10 @@ export default function AdminServicesPortal() {
   };
 
   const handleDeleteQuestion = (questionId: string) => {
+    if (!checkUserPermission(currentUserInfo, "editServiceForms")) {
+      showToast("Access Denied: You lack permission to delete questions.", "error");
+      return;
+    }
     if (!editingService || !editingService.questions) return;
     const filtered = editingService.questions
       .filter(q => q.id !== questionId)
@@ -364,6 +416,7 @@ export default function AdminServicesPortal() {
   };
 
   const handleMoveQuestion = (index: number, direction: "up" | "down") => {
+    if (!checkUserPermission(currentUserInfo, "editServiceForms")) return;
     if (!editingService || !editingService.questions) return;
     const list = [...editingService.questions];
     const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -381,6 +434,14 @@ export default function AdminServicesPortal() {
   // APPLICATION & STATUS HANDLERS
   // ----------------------------------------------------
   const handleUpdateApplicationStatus = async (appId: string, status: string, remarks?: string) => {
+    if (!checkUserPermission(currentUserInfo, "changeStatusServices")) {
+      showToast("Access Denied: You lack permission to change service status.", "error");
+      return;
+    }
+    if (remarks !== undefined && !checkUserPermission(currentUserInfo, "addRemarksServices")) {
+      showToast("Access Denied: You lack permission to add/modify remarks.", "error");
+      return;
+    }
     try {
       const updates: any = {
         status,
@@ -400,6 +461,10 @@ export default function AdminServicesPortal() {
   };
 
   const handleUpdatePaymentStatus = async (appId: string, paymentStatus: "Pending" | "Paid" | "Expired" | "Cancelled" | "Failed", paymentReference?: string) => {
+    if (!checkUserPermission(currentUserInfo, "editBills") && !checkUserPermission(currentUserInfo, "modifyServiceBill")) {
+      showToast("Access Denied: You lack permission to modify billing/payment status.", "error");
+      return;
+    }
     try {
       const updates: any = {
         paymentStatus,
@@ -427,6 +492,10 @@ export default function AdminServicesPortal() {
   };
 
   const handleToggleEditAccess = async (appId: string, currentVal: boolean) => {
+    if (!checkUserPermission(currentUserInfo, "editServiceSubmissions")) {
+      showToast("Access Denied: You lack permission to configure client edit access.", "error");
+      return;
+    }
     try {
       await update(ref(db, `service_applications/${appId}`), { allowEdit: !currentVal });
       showToast(!currentVal ? "User Edit Access ENABLED." : "User Edit Access DISABLED.");
@@ -440,6 +509,24 @@ export default function AdminServicesPortal() {
   };
 
   const handleDeleteItem = async (type: "applications" | "suggestions" | "subscribers" | "invoices", id: string) => {
+    // Check permission based on category
+    if (type === "applications" && !checkUserPermission(currentUserInfo, "deleteServiceSubmissions")) {
+      showToast("Access Denied: You lack permission to delete service submissions.", "error");
+      return;
+    }
+    if (type === "invoices" && !checkUserPermission(currentUserInfo, "deleteBills")) {
+      showToast("Access Denied: You lack permission to delete invoices.", "error");
+      return;
+    }
+    if (type === "suggestions" && !checkUserPermission(currentUserInfo, "deleteSuggestions")) {
+      showToast("Access Denied: You lack permission to delete suggestions.", "error");
+      return;
+    }
+    if (type === "subscribers" && !checkUserPermission(currentUserInfo, "deleteNewsletter")) {
+      showToast("Access Denied: You lack permission to delete newsletter subscribers.", "error");
+      return;
+    }
+
     if (!window.confirm(`Are you sure you want to permanently delete this ${type.slice(0, -1)}?`)) return;
     try {
       if (type === "subscribers") {
@@ -464,9 +551,127 @@ export default function AdminServicesPortal() {
   };
 
   // ----------------------------------------------------
+  // INVOICE / BILL EDITING & MANAGEMENT
+  // ----------------------------------------------------
+  const handleSaveInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingInvoice) return;
+    if (!checkUserPermission(currentUserInfo, "editBills") && !checkUserPermission(currentUserInfo, "modifyServiceBill")) {
+      showToast("Access Denied: You lack permission to modify bills.", "error");
+      return;
+    }
+
+    try {
+      const invId = editingInvoice.invoiceId || `INV-${Date.now()}`;
+      const payload: ServiceInvoice = {
+        ...editingInvoice,
+        invoiceId: invId,
+        amountFormatted: editingInvoice.amountFormatted || `NPR ${Number(editingInvoice.amount || 0).toLocaleString()}`,
+        updatedAt: new Date().toISOString()
+      };
+
+      await set(ref(db, `invoices/${invId}`), payload);
+      
+      // If linked to an application submission, sync its amount and payment status
+      if (editingInvoice.submissionId) {
+        await update(ref(db, `service_applications/${editingInvoice.submissionId}`), {
+          amount: payload.amountFormatted,
+          paymentStatus: payload.paymentStatus,
+          paymentDueAt: payload.paymentDueAt
+        }).catch(() => {});
+      }
+
+      showToast(`Bill #${invId} updated and synced successfully!`);
+      setIsEditingInvoiceModalOpen(false);
+      setEditingInvoice(null);
+      fetchData();
+    } catch (err: any) {
+      showToast("Failed to save invoice: " + err.message, "error");
+    }
+  };
+
+  // ----------------------------------------------------
+  // SUGGESTIONS STATUS & REMARKS HANDLERS
+  // ----------------------------------------------------
+  const handleUpdateSuggestionStatus = async (sugId: string, status: string) => {
+    if (!checkUserPermission(currentUserInfo, "changeStatusSuggestions")) {
+      showToast("Access Denied: You lack permission to change suggestion status.", "error");
+      return;
+    }
+    try {
+      await update(ref(db, `suggestions/${sugId}`), {
+        status,
+        statusUpdatedAt: new Date().toISOString()
+      });
+      showToast(`Suggestion status updated to "${status}"`);
+      fetchData();
+    } catch (e: any) {
+      showToast("Failed to update suggestion status: " + e.message, "error");
+    }
+  };
+
+  const handleUpdateSuggestionRemarks = async (sugId: string, remarks: string) => {
+    if (!checkUserPermission(currentUserInfo, "addRemarksSuggestions")) {
+      showToast("Access Denied: You lack permission to add/modify remarks.", "error");
+      return;
+    }
+    try {
+      await update(ref(db, `suggestions/${sugId}`), {
+        remarks,
+        remarksUpdatedAt: new Date().toISOString()
+      });
+      showToast("Admin remarks saved for suggestion.");
+      fetchData();
+    } catch (e: any) {
+      showToast("Failed to save remarks: " + e.message, "error");
+    }
+  };
+
+  // ----------------------------------------------------
+  // EXPORT SUBMISSIONS CSV
+  // ----------------------------------------------------
+  const handleExportSubmissionsCSV = () => {
+    if (!checkUserPermission(currentUserInfo, "downloadServiceSubmissions")) {
+      showToast("Access Denied: You lack permission to export submissions.", "error");
+      return;
+    }
+    if (applications.length === 0) {
+      showToast("No submissions available to export.", "error");
+      return;
+    }
+    const headers = ["Submission ID", "Service Title", "Applicant Name", "Phone", "Email", "Amount", "Status", "Payment Status", "Submitted At", "Remarks"];
+    const rows = applications.map(a => [
+      `"${a.id || ""}"`,
+      `"${(a.serviceTitle || "").replace(/"/g, '""')}"`,
+      `"${(a.name || a.fullName || "").replace(/"/g, '""')}"`,
+      `"${(a.contact || a.phone || "").replace(/"/g, '""')}"`,
+      `"${(a.email || "").replace(/"/g, '""')}"`,
+      `"${(a.amount || "").replace(/"/g, '""')}"`,
+      `"${(a.status || "Submitted").replace(/"/g, '""')}"`,
+      `"${(a.paymentStatus || "Pending").replace(/"/g, '""')}"`,
+      `"${(a.submittedAt || a.timestamp || "").replace(/"/g, '""')}"`,
+      `"${(a.remarks || "").replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `service_submissions_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Submissions exported as CSV successfully.");
+  };
+
+  // ----------------------------------------------------
   // NEWSLETTER HELPERS
   // ----------------------------------------------------
   const handleCopyAllSubscriberEmails = () => {
+    if (!checkUserPermission(currentUserInfo, "exportNewsletter")) {
+      showToast("Access Denied: You lack permission to export newsletter subscribers.", "error");
+      return;
+    }
     const emails = subscribers.map(s => s.email).filter(Boolean).join(", ");
     if (!emails) {
       showToast("No emails to copy.", "error");
@@ -479,6 +684,10 @@ export default function AdminServicesPortal() {
   };
 
   const handleExportSubscribersCSV = () => {
+    if (!checkUserPermission(currentUserInfo, "exportNewsletter")) {
+      showToast("Access Denied: You lack permission to export newsletter subscribers.", "error");
+      return;
+    }
     if (subscribers.length === 0) {
       showToast("No subscribers to export.", "error");
       return;
@@ -508,6 +717,10 @@ export default function AdminServicesPortal() {
   // ----------------------------------------------------
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkUserPermission(currentUserInfo, "manageUsers")) {
+      showToast("Access Denied: Only Super Admin can manage user accounts.", "error");
+      return;
+    }
     if (!userForm.username.trim() || !userForm.pin.trim() || !userForm.name.trim()) {
       showToast("Please fill in username, full name, and 4-digit PIN.", "error");
       return;
@@ -543,6 +756,10 @@ export default function AdminServicesPortal() {
   };
 
   const handleDeleteUser = async (userId: string) => {
+    if (!checkUserPermission(currentUserInfo, "manageUsers")) {
+      showToast("Access Denied: Only Super Admin can delete users.", "error");
+      return;
+    }
     const currentUsers = portfolioData.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers;
     if (currentUsers.length <= 1) {
       showToast("Cannot delete the only admin user.", "error");
@@ -825,7 +1042,7 @@ export default function AdminServicesPortal() {
         {/* Navigation Tabs with Permissions Enforcement */}
         <div className="flex flex-wrap p-1.5 bg-slate-900 border border-slate-800 rounded-2xl gap-1 shadow-lg overflow-x-auto">
           
-          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.serviceConfiguration !== false) && (
+          {checkUserPermission(currentUserInfo, "viewServiceForms") && (
             <button
               onClick={() => { setActiveTab("services"); setSelectedItem(null); }}
               className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
@@ -839,7 +1056,7 @@ export default function AdminServicesPortal() {
             </button>
           )}
 
-          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.serviceRequests !== false) && (
+          {checkUserPermission(currentUserInfo, "viewServiceSubmissions") && (
             <button
               onClick={() => { setActiveTab("applications"); setSelectedItem(null); }}
               className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
@@ -853,7 +1070,7 @@ export default function AdminServicesPortal() {
             </button>
           )}
 
-          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.billing !== false) && (
+          {checkUserPermission(currentUserInfo, "viewBills") && (
             <button
               onClick={() => { setActiveTab("invoices"); setSelectedItem(null); }}
               className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
@@ -867,7 +1084,7 @@ export default function AdminServicesPortal() {
             </button>
           )}
 
-          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.suggestions !== false) && (
+          {checkUserPermission(currentUserInfo, "viewSuggestions") && (
             <button
               onClick={() => { setActiveTab("suggestions"); setSelectedItem(null); }}
               className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
@@ -881,7 +1098,7 @@ export default function AdminServicesPortal() {
             </button>
           )}
 
-          {(currentUserInfo?.role === "super_admin" || currentUserInfo?.permissions?.newsletter !== false) && (
+          {checkUserPermission(currentUserInfo, "viewNewsletter") && (
             <button
               onClick={() => { setActiveTab("subscribers"); setSelectedItem(null); }}
               className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
@@ -895,7 +1112,7 @@ export default function AdminServicesPortal() {
             </button>
           )}
 
-          {currentUserInfo?.role === "super_admin" && (
+          {checkUserPermission(currentUserInfo, "manageUsers") && (
             <button
               onClick={() => { setActiveTab("rbac"); setSelectedItem(null); }}
               className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
@@ -1458,6 +1675,17 @@ export default function AdminServicesPortal() {
                   <option value="expired">Expired</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
+
+                {checkUserPermission(currentUserInfo, "downloadServiceSubmissions") && (
+                  <button
+                    type="button"
+                    onClick={handleExportSubmissionsCSV}
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/20 transition-all"
+                  >
+                    <DownloadCloud className="w-3.5 h-3.5" />
+                    <span>Export CSV</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1684,7 +1912,7 @@ export default function AdminServicesPortal() {
                                 </button>
                               </div>
 
-                              <div className="pt-2">
+                              <div className="pt-2 flex flex-wrap items-center gap-2">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1713,11 +1941,44 @@ export default function AdminServicesPortal() {
                                       });
                                     }
                                   }}
-                                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-amber-500/10"
+                                  className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-amber-500/10"
                                 >
                                   <Receipt className="w-3.5 h-3.5" />
-                                  <span>View & Print Official Bill</span>
+                                  <span>View Bill</span>
                                 </button>
+
+                                {checkUserPermission(currentUserInfo, "editBills") && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const matchingInv = invoices.find(i => i.submissionId === app.id || i.invoiceId === `INV-${app.id}`);
+                                      const baseInv = matchingInv || {
+                                        invoiceId: `INV-${app.id}`,
+                                        submissionId: app.id,
+                                        serviceId: app.serviceId || "serv-default",
+                                        serviceTitle: app.serviceTitle || "Professional Service",
+                                        clientName: app.name || "Valued Client",
+                                        clientEmail: app.email || "client@amitjoshi.info.np",
+                                        clientPhone: app.contact || "+977 9800000000",
+                                        clientAddress: app.temporaryAddress || "",
+                                        amount: typeof app.amount === "number" ? app.amount : 5000,
+                                        amountFormatted: app.amount || "NPR 5,000",
+                                        currency: "NPR",
+                                        submittedAt: app.submittedAt || app.timestamp || new Date().toISOString(),
+                                        paymentDueAt: app.paymentDueAt || new Date(Date.now() + 12 * 3600 * 1000).toISOString(),
+                                        paymentStatus: app.paymentStatus || "Pending",
+                                        answers: app.dynamicAnswers || app.customAnswers,
+                                        attachments: app.attachments
+                                      };
+                                      setEditingInvoice({ ...baseInv });
+                                      setIsEditingInvoiceModalOpen(true);
+                                    }}
+                                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                    <span>Edit Bill</span>
+                                  </button>
+                                )}
                               </div>
                             </div>
 
@@ -1886,14 +2147,29 @@ export default function AdminServicesPortal() {
                                 <Printer className="w-3.5 h-3.5" />
                                 <span>View Bill</span>
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteItem("invoices", inv.invoiceId)}
-                                className="p-1.5 text-red-400 hover:text-red-300 rounded-lg"
-                                title="Delete Invoice"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {checkUserPermission(currentUserInfo, "editBills") && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingInvoice({ ...inv });
+                                    setIsEditingInvoiceModalOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+                              {checkUserPermission(currentUserInfo, "deleteBills") && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteItem("invoices", inv.invoiceId)}
+                                  className="p-1.5 text-red-400 hover:text-red-300 rounded-lg"
+                                  title="Delete Invoice"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1940,10 +2216,10 @@ export default function AdminServicesPortal() {
                 {filteredSuggestions.map((sug) => (
                   <div
                     key={sug.id}
-                    className="bg-slate-900 border border-white/10 rounded-2xl p-5 space-y-3 hover:border-amber-500/30 transition-all"
+                    className="bg-slate-900 border border-white/10 rounded-2xl p-5 space-y-4 hover:border-amber-500/30 transition-all"
                   >
-                    <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs font-bold text-amber-400 select-all">
                           ID: {sug.id}
                         </span>
@@ -1953,14 +2229,29 @@ export default function AdminServicesPortal() {
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteItem("suggestions", sug.id)}
-                        className="p-1.5 text-red-400 hover:text-red-300 rounded-lg cursor-pointer"
-                        title="Delete Suggestion"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <select
+                          value={sug.status || "Submitted"}
+                          onChange={(e) => handleUpdateSuggestionStatus(sug.id, e.target.value)}
+                          className="bg-slate-950 border border-slate-700 text-amber-400 rounded-xl px-3 py-1 text-xs font-mono outline-none"
+                        >
+                          <option value="Submitted">Submitted</option>
+                          <option value="In Review">In Review</option>
+                          <option value="Acknowledged">Acknowledged</option>
+                          <option value="Resolved">Resolved</option>
+                        </select>
+
+                        {checkUserPermission(currentUserInfo, "deleteSuggestions") && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteItem("suggestions", sug.id)}
+                            className="p-1.5 text-red-400 hover:text-red-300 rounded-lg cursor-pointer"
+                            title="Delete Suggestion"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div>
@@ -1970,6 +2261,32 @@ export default function AdminServicesPortal() {
 
                     <div className="p-3.5 bg-black/40 rounded-xl border border-white/5 text-xs font-sans text-gray-200 leading-relaxed">
                       {sug.message || sug.suggestion || "No message body"}
+                    </div>
+
+                    {/* Remarks Input */}
+                    <div className="pt-2 border-t border-white/5">
+                      <label className="text-[10px] font-mono font-bold uppercase text-gray-400 block mb-1">
+                        Internal Admin Remarks
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          defaultValue={sug.remarks || ""}
+                          id={`sug-remarks-${sug.id}`}
+                          placeholder="e.g. Replied via email on 2026-03-24..."
+                          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-amber-500 font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const el = document.getElementById(`sug-remarks-${sug.id}`) as HTMLInputElement;
+                            if (el) handleUpdateSuggestionRemarks(sug.id, el.value);
+                          }}
+                          className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-mono font-bold cursor-pointer"
+                        >
+                          Save
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -2189,90 +2506,197 @@ export default function AdminServicesPortal() {
                     </div>
 
                     {/* Fine-Grained Permissions Matrix */}
-                    <div className="space-y-2 pt-2 border-t border-white/10">
-                      <label className="text-amber-400 uppercase font-bold text-[11px] block">
-                        Access Control & Permissions
-                      </label>
+                    <div className="space-y-3 pt-2 border-t border-white/10 max-h-60 overflow-y-auto pr-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-amber-400 uppercase font-bold text-[11px] block">
+                          Granular Permission Matrix
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const allPerms: any = {
+                              serviceRequests: true,
+                              suggestions: true,
+                              newsletter: true,
+                              serviceConfiguration: true,
+                              billing: true,
+                              viewServiceForms: true,
+                              createServiceForms: true,
+                              editServiceForms: true,
+                              deleteServiceForms: true,
+                              viewServiceSubmissions: true,
+                              editServiceSubmissions: true,
+                              deleteServiceSubmissions: true,
+                              changeStatusServices: true,
+                              addRemarksServices: true,
+                              downloadServiceSubmissions: true,
+                              viewBills: true,
+                              editBills: true,
+                              createBills: true,
+                              deleteBills: true,
+                              modifyServiceBill: true,
+                              viewSuggestions: true,
+                              deleteSuggestions: true,
+                              changeStatusSuggestions: true,
+                              addRemarksSuggestions: true,
+                              viewNewsletter: true,
+                              deleteNewsletter: true,
+                              exportNewsletter: true,
+                              manageUsers: true
+                            };
+                            setUserForm(prev => ({ ...prev, permissions: allPerms }));
+                          }}
+                          className="text-[10px] text-amber-400 hover:underline"
+                        >
+                          Select All
+                        </button>
+                      </div>
                       
-                      <div className="space-y-2 bg-slate-950/80 p-3 rounded-xl border border-white/5">
-                        <label className="flex items-center space-x-2.5 cursor-pointer text-xs text-gray-200">
-                          <input
-                            type="checkbox"
-                            checked={userForm.permissions?.serviceRequests ?? true}
-                            onChange={(e) => setUserForm(prev => ({
-                              ...prev,
-                              permissions: {
-                                ...(prev.permissions || { suggestions: true, newsletter: true, serviceConfiguration: true, billing: true }),
-                                serviceRequests: e.target.checked
-                              }
-                            }))}
-                            className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
-                          />
-                          <span>View & Manage Service Submissions</span>
-                        </label>
+                      {/* 1. Dynamic Service Forms */}
+                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">1. Dynamic Service Forms</span>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {[
+                            { key: "viewServiceForms", label: "View Forms" },
+                            { key: "createServiceForms", label: "Create Forms" },
+                            { key: "editServiceForms", label: "Edit Forms" },
+                            { key: "deleteServiceForms", label: "Delete Forms" }
+                          ].map(p => (
+                            <label key={p.key} className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
+                              <input
+                                type="checkbox"
+                                checked={(userForm.permissions as any)?.[p.key] ?? true}
+                                onChange={(e) => setUserForm(prev => ({
+                                  ...prev,
+                                  permissions: { ...(prev.permissions || {}), [p.key]: e.target.checked }
+                                }))}
+                                className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
+                              />
+                              <span className="text-[11px]">{p.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
 
-                        <label className="flex items-center space-x-2.5 cursor-pointer text-xs text-gray-200">
-                          <input
-                            type="checkbox"
-                            checked={userForm.permissions?.billing ?? true}
-                            onChange={(e) => setUserForm(prev => ({
-                              ...prev,
-                              permissions: {
-                                ...(prev.permissions || { serviceRequests: true, suggestions: true, newsletter: true, serviceConfiguration: true }),
-                                billing: e.target.checked
-                              }
-                            }))}
-                            className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
-                          />
-                          <span>View & Edit Invoices / 12h Billing</span>
-                        </label>
+                      {/* 2. Submissions Management */}
+                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">2. Submissions & Requests</span>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {[
+                            { key: "viewServiceSubmissions", label: "View Requests" },
+                            { key: "editServiceSubmissions", label: "Edit Access" },
+                            { key: "changeStatusServices", label: "Change Status" },
+                            { key: "addRemarksServices", label: "Add Remarks" },
+                            { key: "downloadServiceSubmissions", label: "Export CSV" },
+                            { key: "deleteServiceSubmissions", label: "Delete Request" }
+                          ].map(p => (
+                            <label key={p.key} className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
+                              <input
+                                type="checkbox"
+                                checked={(userForm.permissions as any)?.[p.key] ?? true}
+                                onChange={(e) => setUserForm(prev => ({
+                                  ...prev,
+                                  permissions: { ...(prev.permissions || {}), [p.key]: e.target.checked }
+                                }))}
+                                className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
+                              />
+                              <span className="text-[11px]">{p.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
 
-                        <label className="flex items-center space-x-2.5 cursor-pointer text-xs text-gray-200">
-                          <input
-                            type="checkbox"
-                            checked={userForm.permissions?.suggestions ?? true}
-                            onChange={(e) => setUserForm(prev => ({
-                              ...prev,
-                              permissions: {
-                                ...(prev.permissions || { serviceRequests: true, newsletter: true, serviceConfiguration: true, billing: true }),
-                                suggestions: e.target.checked
-                              }
-                            }))}
-                            className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
-                          />
-                          <span>View & Process Suggestions / Feedback</span>
-                        </label>
+                      {/* 3. Invoices & 12h Billing */}
+                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">3. Invoices & Billing</span>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {[
+                            { key: "viewBills", label: "View Bills" },
+                            { key: "editBills", label: "Edit Bills" },
+                            { key: "createBills", label: "Create Bills" },
+                            { key: "deleteBills", label: "Delete Bills" }
+                          ].map(p => (
+                            <label key={p.key} className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
+                              <input
+                                type="checkbox"
+                                checked={(userForm.permissions as any)?.[p.key] ?? true}
+                                onChange={(e) => setUserForm(prev => ({
+                                  ...prev,
+                                  permissions: { ...(prev.permissions || {}), [p.key]: e.target.checked }
+                                }))}
+                                className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
+                              />
+                              <span className="text-[11px]">{p.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
 
-                        <label className="flex items-center space-x-2.5 cursor-pointer text-xs text-gray-200">
-                          <input
-                            type="checkbox"
-                            checked={userForm.permissions?.newsletter ?? true}
-                            onChange={(e) => setUserForm(prev => ({
-                              ...prev,
-                              permissions: {
-                                ...(prev.permissions || { serviceRequests: true, suggestions: true, serviceConfiguration: true, billing: true }),
-                                newsletter: e.target.checked
-                              }
-                            }))}
-                            className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
-                          />
-                          <span>View & Export Newsletter Subscribers</span>
-                        </label>
+                      {/* 4. Feedback & Suggestions */}
+                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">4. Feedback & Suggestions</span>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {[
+                            { key: "viewSuggestions", label: "View Suggestions" },
+                            { key: "changeStatusSuggestions", label: "Change Status" },
+                            { key: "addRemarksSuggestions", label: "Add Remarks" },
+                            { key: "deleteSuggestions", label: "Delete Suggestion" }
+                          ].map(p => (
+                            <label key={p.key} className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
+                              <input
+                                type="checkbox"
+                                checked={(userForm.permissions as any)?.[p.key] ?? true}
+                                onChange={(e) => setUserForm(prev => ({
+                                  ...prev,
+                                  permissions: { ...(prev.permissions || {}), [p.key]: e.target.checked }
+                                }))}
+                                className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
+                              />
+                              <span className="text-[11px]">{p.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
 
-                        <label className="flex items-center space-x-2.5 cursor-pointer text-xs text-gray-200">
+                      {/* 5. Newsletter Subscribers */}
+                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">5. Newsletter Subscribers</span>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {[
+                            { key: "viewNewsletter", label: "View Subscribers" },
+                            { key: "exportNewsletter", label: "Export Subscribers" },
+                            { key: "deleteNewsletter", label: "Delete Subscriber" }
+                          ].map(p => (
+                            <label key={p.key} className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
+                              <input
+                                type="checkbox"
+                                checked={(userForm.permissions as any)?.[p.key] ?? true}
+                                onChange={(e) => setUserForm(prev => ({
+                                  ...prev,
+                                  permissions: { ...(prev.permissions || {}), [p.key]: e.target.checked }
+                                }))}
+                                className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
+                              />
+                              <span className="text-[11px]">{p.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 6. Admin User Management */}
+                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">6. System Admin</span>
+                        <label className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
                           <input
                             type="checkbox"
-                            checked={userForm.permissions?.serviceConfiguration ?? true}
+                            checked={(userForm.permissions as any)?.manageUsers ?? false}
                             onChange={(e) => setUserForm(prev => ({
                               ...prev,
-                              permissions: {
-                                ...(prev.permissions || { serviceRequests: true, suggestions: true, newsletter: true, billing: true }),
-                                serviceConfiguration: e.target.checked
-                              }
+                              permissions: { ...(prev.permissions || {}), manageUsers: e.target.checked }
                             }))}
                             className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
                           />
-                          <span>Configure Services & Dynamic Form Builder</span>
+                          <span className="text-[11px]">Manage Admin Accounts & PINs</span>
                         </label>
                       </div>
                     </div>
@@ -2343,6 +2767,167 @@ export default function AdminServicesPortal() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Edit Invoice Modal */}
+        {isEditingInvoiceModalOpen && editingInvoice && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-5 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <h4 className="text-base font-bold text-amber-400 uppercase font-mono flex items-center gap-2">
+                  <Receipt className="w-4 h-4" />
+                  <span>Edit & Update Official Bill</span>
+                </h4>
+                <button
+                  onClick={() => {
+                    setIsEditingInvoiceModalOpen(false);
+                    setEditingInvoice(null);
+                  }}
+                  className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveInvoice} className="space-y-4 text-xs font-mono">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Invoice Number (ID)</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={editingInvoice.invoiceId}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl p-3 text-amber-400 font-bold opacity-80 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Service Title</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingInvoice.serviceTitle}
+                      onChange={(e) => setEditingInvoice({ ...editingInvoice, serviceTitle: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Client Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingInvoice.clientName}
+                      onChange={(e) => setEditingInvoice({ ...editingInvoice, clientName: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Client Phone *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingInvoice.clientPhone}
+                      onChange={(e) => setEditingInvoice({ ...editingInvoice, clientPhone: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Client Email *</label>
+                    <input
+                      type="email"
+                      required
+                      value={editingInvoice.clientEmail}
+                      onChange={(e) => setEditingInvoice({ ...editingInvoice, clientEmail: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Client Address</label>
+                    <input
+                      type="text"
+                      value={editingInvoice.clientAddress || ""}
+                      onChange={(e) => setEditingInvoice({ ...editingInvoice, clientAddress: e.target.value })}
+                      placeholder="e.g. Kathmandu, Nepal"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Billing Amount (NPR) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={editingInvoice.amount || 0}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        setEditingInvoice({
+                          ...editingInvoice,
+                          amount: val,
+                          amountFormatted: `NPR ${val.toLocaleString()}`
+                        });
+                      }}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-amber-400 font-bold focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold">Payment Status</label>
+                    <select
+                      value={editingInvoice.paymentStatus || "Pending"}
+                      onChange={(e) => setEditingInvoice({ ...editingInvoice, paymentStatus: e.target.value as any })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    >
+                      <option value="Pending">Pending / Unpaid</option>
+                      <option value="Paid">Paid (Verified)</option>
+                      <option value="Expired">Expired</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-gray-400 uppercase font-bold">Payment Due Date / 12-Hour Deadline</label>
+                  <input
+                    type="text"
+                    value={editingInvoice.paymentDueAt || ""}
+                    onChange={(e) => setEditingInvoice({ ...editingInvoice, paymentDueAt: e.target.value })}
+                    placeholder="ISO Timestamp or YYYY-MM-DD HH:MM:SS"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                  />
+                  <span className="text-[10px] text-gray-500">Defaults to 12 hours from submission.</span>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingInvoiceModalOpen(false);
+                      setEditingInvoice(null);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold uppercase tracking-wider"
+                  >
+                    Save Bill Changes
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

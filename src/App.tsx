@@ -1007,7 +1007,7 @@ export default function App() {
                 </span>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed font-sans">
-                Official website of Amit Joshi a student with a strong passion for technology, web development, and digital design. I believe that technology is more than just a field of study—it is a powerful tool for creativity, innovation, and solving real-world problems. I enjoy building digital products that are not only functional but also visually appealing, user-friendly, and professionally designed. Every project I work on is an opportunity to learn something new, improve my skills, and challenge myself to become a better developer and designer.
+                Official website of Amit Joshi, a student with a strong passion for technology, web development, and digital design. I believe that technology is more than just a field of study—it is a powerful tool for creativity, innovation, and solving real-world problems. I enjoy building digital products that are not only functional but also visually appealing, user-friendly, and professionally designed. Every project I work on is an opportunity to learn something new, improve my skills, and challenge myself to become a better developer and designer.
               </p>
             </div>
 
