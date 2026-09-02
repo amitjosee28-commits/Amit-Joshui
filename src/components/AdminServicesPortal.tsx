@@ -9,7 +9,7 @@ import {
   Filter, Users, Copy, Check, DownloadCloud, ArrowUpDown, Send,
   Receipt, DollarSign, Calendar, Plus, Edit2, Shield, UserPlus, Eye,
   Sliders, Settings, ArrowUp, ArrowDown, ExternalLink, HelpCircle,
-  X, CheckSquare, ListPlus, Printer, AlertTriangle, Edit3
+  X, CheckSquare, ListPlus, Printer, AlertTriangle, Edit3, ShieldAlert
 } from "lucide-react";
 import InvoiceView from "./InvoiceView";
 
@@ -428,6 +428,54 @@ export default function AdminServicesPortal() {
 
     const reordered = list.map((q, idx) => ({ ...q, order: idx + 1 }));
     setEditingService({ ...editingService, questions: reordered });
+  };
+
+  const handleRestoreDefaultQuestions = (serviceId: string) => {
+    const defaultS = defaultPortfolioData.services?.find(s => s.id === serviceId);
+    if (defaultS && defaultS.questions && defaultS.questions.length > 0) {
+      if (editingService) {
+        setEditingService({ ...editingService, questions: JSON.parse(JSON.stringify(defaultS.questions)) });
+        showToast("Restored past default intake questions.");
+      }
+    } else {
+      // If service is a custom service without presets, generate standard intake questions
+      if (editingService) {
+        setEditingService({
+          ...editingService,
+          questions: [
+            {
+              id: `q-${Date.now()}-1`,
+              order: 1,
+              labelEn: "Organization / Full Name",
+              labelNp: "संस्था वा पूरा नाम",
+              fieldType: "short_text",
+              required: true,
+              placeholder: "e.g. Acme Innovations"
+            },
+            {
+              id: `q-${Date.now()}-2`,
+              order: 2,
+              labelEn: "Project Scope & Requirements",
+              labelNp: "परियोजना दायरा र आवश्यकताहरू",
+              fieldType: "long_text",
+              required: true,
+              placeholder: "Describe the requirements..."
+            },
+            {
+              id: `q-${Date.now()}-3`,
+              order: 3,
+              labelEn: "Upload Supporting Assets (Image)",
+              labelNp: "सम्बन्धित फाइल वा छवि अपलोड गर्नुहोस्",
+              fieldType: "image_upload",
+              required: false,
+              maxImages: 4,
+              allowedFileTypes: ["jpg", "jpeg", "png", "webp"]
+            }
+          ]
+        });
+        showToast("Standard intake questions created.");
+      }
+    }
   };
 
   // ----------------------------------------------------
@@ -1131,6 +1179,13 @@ export default function AdminServicesPortal() {
         {/* TAB 1: DYNAMIC SERVICE & QUESTIONS BUILDER */}
         {/* ---------------------------------------------------- */}
         {activeTab === "services" && (
+          !checkUserPermission(currentUserInfo, "viewServiceForms") ? (
+            <div className="bg-slate-900/80 border border-rose-500/30 rounded-3xl p-12 text-center space-y-3">
+              <ShieldAlert className="w-12 h-12 text-rose-400 mx-auto" />
+              <h3 className="text-lg font-bold text-white font-mono">Not Allowed</h3>
+              <p className="text-xs text-slate-400 font-mono">You do not have permission to access the Dynamic Service Form Builder.</p>
+            </div>
+          ) : (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
@@ -1272,6 +1327,15 @@ export default function AdminServicesPortal() {
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreDefaultQuestions(editingService.id)}
+                        className="px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
+                        title="Restore original questions from default configuration"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Restore Defaults</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleAddQuestionToService("short_text")}
@@ -1620,12 +1684,20 @@ export default function AdminServicesPortal() {
               </div>
             )}
           </div>
+          )
         )}
 
         {/* ---------------------------------------------------- */}
         {/* TAB 2: SERVICE SUBMISSIONS */}
         {/* ---------------------------------------------------- */}
         {activeTab === "applications" && (
+          !checkUserPermission(currentUserInfo, "viewServiceSubmissions") ? (
+            <div className="bg-slate-900/80 border border-rose-500/30 rounded-3xl p-12 text-center space-y-3">
+              <ShieldAlert className="w-12 h-12 text-rose-400 mx-auto" />
+              <h3 className="text-lg font-bold text-white font-mono">Not Allowed</h3>
+              <p className="text-xs text-slate-400 font-mono">You do not have permission to view Customer Service Submissions.</p>
+            </div>
+          ) : (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
@@ -1634,7 +1706,7 @@ export default function AdminServicesPortal() {
                   <span>Customer Service Submissions ({applications.length})</span>
                 </h2>
                 <p className="text-xs text-slate-400 font-mono mt-1">
-                  View submitted applications, customer details, all dynamic answers, uploaded images, and 12-hour payment tracking.
+                  View submitted applications, customer details, all dynamic answers, uploaded images, and payment status.
                 </p>
               </div>
 
@@ -2042,12 +2114,20 @@ export default function AdminServicesPortal() {
               </div>
             )}
           </div>
+          )
         )}
 
         {/* ---------------------------------------------------- */}
-        {/* TAB 3: INVOICES & 12-HOUR BILLING */}
+        {/* TAB 3: INVOICES & BILLING */}
         {/* ---------------------------------------------------- */}
         {activeTab === "invoices" && (
+          !checkUserPermission(currentUserInfo, "viewBills") ? (
+            <div className="bg-slate-900/80 border border-rose-500/30 rounded-3xl p-12 text-center space-y-3">
+              <ShieldAlert className="w-12 h-12 text-rose-400 mx-auto" />
+              <h3 className="text-lg font-bold text-white font-mono">Not Allowed</h3>
+              <p className="text-xs text-slate-400 font-mono">You do not have permission to view Invoices & Billing.</p>
+            </div>
+          ) : (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
@@ -2180,12 +2260,20 @@ export default function AdminServicesPortal() {
               </div>
             )}
           </div>
+          )
         )}
 
         {/* ---------------------------------------------------- */}
         {/* TAB 4: SUGGESTIONS & FEEDBACK */}
         {/* ---------------------------------------------------- */}
         {activeTab === "suggestions" && (
+          !checkUserPermission(currentUserInfo, "viewSuggestions") ? (
+            <div className="bg-slate-900/80 border border-rose-500/30 rounded-3xl p-12 text-center space-y-3">
+              <ShieldAlert className="w-12 h-12 text-rose-400 mx-auto" />
+              <h3 className="text-lg font-bold text-white font-mono">Not Allowed</h3>
+              <p className="text-xs text-slate-400 font-mono">You do not have permission to view Suggestions & Feedback.</p>
+            </div>
+          ) : (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
@@ -2293,12 +2381,20 @@ export default function AdminServicesPortal() {
               </div>
             )}
           </div>
+          )
         )}
 
         {/* ---------------------------------------------------- */}
         {/* TAB 5: NEWSLETTER SUBSCRIBERS */}
         {/* ---------------------------------------------------- */}
         {activeTab === "subscribers" && (
+          !checkUserPermission(currentUserInfo, "viewNewsletter") ? (
+            <div className="bg-slate-900/80 border border-rose-500/30 rounded-3xl p-12 text-center space-y-3">
+              <ShieldAlert className="w-12 h-12 text-rose-400 mx-auto" />
+              <h3 className="text-lg font-bold text-white font-mono">Not Allowed</h3>
+              <p className="text-xs text-slate-400 font-mono">You do not have permission to view Newsletter Subscribers.</p>
+            </div>
+          ) : (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
@@ -2393,12 +2489,20 @@ export default function AdminServicesPortal() {
               </div>
             )}
           </div>
+          )
         )}
 
         {/* ---------------------------------------------------- */}
         {/* TAB 6: RBAC & ADMIN USERS */}
         {/* ---------------------------------------------------- */}
         {activeTab === "rbac" && (
+          !checkUserPermission(currentUserInfo, "manageUsers") ? (
+            <div className="bg-slate-900/80 border border-rose-500/30 rounded-3xl p-12 text-center space-y-3">
+              <ShieldAlert className="w-12 h-12 text-rose-400 mx-auto" />
+              <h3 className="text-lg font-bold text-white font-mono">Not Allowed</h3>
+              <p className="text-xs text-slate-400 font-mono">You do not have permission to manage Admin Accounts & Access Controls.</p>
+            </div>
+          ) : (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
@@ -2587,6 +2691,7 @@ export default function AdminServicesPortal() {
                             { key: "editServiceSubmissions", label: "Edit Access" },
                             { key: "changeStatusServices", label: "Change Status" },
                             { key: "addRemarksServices", label: "Add Remarks" },
+                            { key: "modifyServiceBill", label: "Modify Bill" },
                             { key: "downloadServiceSubmissions", label: "Export CSV" },
                             { key: "deleteServiceSubmissions", label: "Delete Request" }
                           ].map(p => (
@@ -2769,6 +2874,7 @@ export default function AdminServicesPortal() {
               ))}
             </div>
           </div>
+          )
         )}
 
         {/* Edit Invoice Modal */}

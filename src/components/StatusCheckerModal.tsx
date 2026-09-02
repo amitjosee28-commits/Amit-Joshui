@@ -24,7 +24,10 @@ export default function StatusCheckerModal({
   faviconUrl,
   initialReqId = ""
 }: StatusCheckerModalProps) {
+  const [trackMode, setTrackMode] = useState<"token" | "pin">("token");
   const [searchId, setSearchId] = useState(initialReqId);
+  const [searchName, setSearchName] = useState("");
+  const [searchPin, setSearchPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [type, setType] = useState<"service" | "suggestion" | null>(null);
@@ -39,12 +42,6 @@ export default function StatusCheckerModal({
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const cleanId = searchId.trim().toUpperCase();
-    if (!cleanId) {
-      setErrorMsg("Please enter a valid Unique ID / Token.");
-      return;
-    }
-
     setLoading(true);
     setErrorMsg("");
     setResult(null);
@@ -55,6 +52,78 @@ export default function StatusCheckerModal({
     setEditForm(null);
 
     try {
+      if (trackMode === "pin") {
+        const cleanName = searchName.trim().toLowerCase();
+        const cleanPin = searchPin.trim();
+
+        if (!cleanName) {
+          setErrorMsg("Please enter your Request Name / Full Legal Name.");
+          setLoading(false);
+          return;
+        }
+
+        if (!cleanPin || cleanPin.length !== 4) {
+          setErrorMsg("Please enter your 4-digit security PIN.");
+          setLoading(false);
+          return;
+        }
+
+        // Query service_applications collection
+        const allAppsSnap = await get(ref(db, "service_applications"));
+        if (allAppsSnap.exists()) {
+          const apps = Object.values(allAppsSnap.val() || {}) as any[];
+          const matched = apps.find(a => {
+            if (!a) return false;
+            const aName = (a.fullName || a.name || a.applicantName || "").trim().toLowerCase();
+            const aPin = String(a.applicantPin || a.pin || "").trim();
+            return (aName === cleanName || aName.includes(cleanName)) && aPin === cleanPin;
+          });
+
+          if (matched) {
+            setResult(matched);
+            setType("service");
+            const cleanId = matched.id;
+            const invSnap = await get(ref(db, `invoices/INV-${cleanId}`));
+            if (invSnap.exists()) {
+              setInvoiceData(invSnap.val());
+            } else {
+              setInvoiceData({
+                invoiceId: `INV-${cleanId}`,
+                submissionId: cleanId,
+                serviceId: matched.serviceId || "serv-default",
+                serviceTitle: matched.serviceTitle || "Professional Service",
+                clientName: matched.name || matched.fullName || "Valued Client",
+                clientEmail: matched.email || "",
+                clientPhone: matched.contact || matched.phone || "",
+                clientAddress: matched.temporaryAddress || matched.address || "",
+                amount: typeof matched.amountNum === "number" ? matched.amountNum : 5000,
+                amountFormatted: matched.amount || "NPR 5,000",
+                currency: "NPR",
+                submittedAt: matched.submittedAt || matched.timestamp || new Date().toISOString(),
+                paymentDueAt: matched.paymentDueAt || new Date(Date.now() + 12 * 3600 * 1000).toISOString(),
+                paymentStatus: matched.paymentStatus || "Pending",
+                answers: matched.dynamicAnswers || matched.customAnswers,
+                attachments: matched.attachments
+              });
+            }
+            setLoading(false);
+            return;
+          }
+        }
+
+        setErrorMsg(`No application found matching Name "${searchName}" and PIN "${searchPin}". Please check your details.`);
+        setLoading(false);
+        return;
+      }
+
+      // Token / ID Search Mode
+      const cleanId = searchId.trim().toUpperCase();
+      if (!cleanId) {
+        setErrorMsg("Please enter a valid Unique ID / Token.");
+        setLoading(false);
+        return;
+      }
+
       // 1. Check direct service_applications
       const appRef = ref(db, `service_applications/${cleanId}`);
       const appSnap = await get(appRef);
@@ -252,28 +321,92 @@ export default function StatusCheckerModal({
             Track Requisition or Public Feedback
           </h3>
           <p className="text-xs text-gray-400">
-            Enter your unique Tracking Token (e.g. <span className="font-mono text-cyan-300 font-bold">REQ-XXXXX</span> or <span className="font-mono text-purple-300 font-bold">SUG-XXXXX</span>) to view real-time processing status and download invoices.
+            Check the real-time processing status, updates, and download invoices using either your Request ID Token or your Applicant Name & 4-Digit Security PIN.
           </p>
         </div>
 
-        {/* Search Input Bar */}
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <input
-            type="text"
-            required
-            value={searchId}
-            onChange={(e) => setSearchId(e.target.value.toUpperCase())}
-            placeholder="e.g. REQ-8A4C2"
-            className="flex-1 bg-white/5 border border-cyan-500/30 rounded-2xl px-4 py-3 text-sm text-cyan-300 font-mono placeholder-gray-500 focus:outline-none focus:border-cyan-400 uppercase tracking-wider"
-          />
+        {/* Tracking Mode Switcher Tabs */}
+        <div className="flex rounded-2xl bg-white/5 p-1 border border-white/10">
           <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-bold font-mono text-xs uppercase tracking-wider rounded-2xl transition-all active:scale-95 cursor-pointer disabled:opacity-50 flex items-center space-x-1.5 shadow-lg shadow-cyan-500/20"
+            type="button"
+            onClick={() => { setTrackMode("token"); setErrorMsg(""); }}
+            className={`flex-1 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              trackMode === "token"
+                ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/20"
+                : "text-gray-400 hover:text-white"
+            }`}
           >
-            {loading ? <Clock className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            <span>Check</span>
+            Track with Request ID Token
           </button>
+          <button
+            type="button"
+            onClick={() => { setTrackMode("pin"); setErrorMsg(""); }}
+            className={`flex-1 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              trackMode === "pin"
+                ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/20"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Track with Name & 4-Digit PIN
+          </button>
+        </div>
+
+        {/* Search Input Bar */}
+        <form onSubmit={handleSearch} className="space-y-3">
+          {trackMode === "token" ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                required
+                value={searchId}
+                onChange={(e) => setSearchId(e.target.value.toUpperCase())}
+                placeholder="e.g. REQ-8A4C2 or SUG-3F9A1"
+                className="flex-1 bg-white/5 border border-cyan-500/30 rounded-2xl px-4 py-3 text-sm text-cyan-300 font-mono placeholder-gray-500 focus:outline-none focus:border-cyan-400 uppercase tracking-wider"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-bold font-mono text-xs uppercase tracking-wider rounded-2xl transition-all active:scale-95 cursor-pointer disabled:opacity-50 flex items-center space-x-1.5 shadow-lg shadow-cyan-500/20"
+              >
+                {loading ? <Clock className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                <span>Check Status</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+              <div className="sm:col-span-3">
+                <input
+                  type="text"
+                  required
+                  value={searchName}
+                  onChange={(e) => setSearchName(e.target.value)}
+                  placeholder="Applicant Legal Name (e.g. Ram Bahadur)"
+                  className="w-full bg-white/5 border border-cyan-500/30 rounded-2xl px-4 py-3 text-sm text-cyan-300 font-sans placeholder-gray-500 focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+              <div className="sm:col-span-1">
+                <input
+                  type="password"
+                  maxLength={4}
+                  required
+                  value={searchPin}
+                  onChange={(e) => setSearchPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="4-Digit PIN"
+                  className="w-full bg-white/5 border border-cyan-500/30 rounded-2xl px-4 py-3 text-sm text-cyan-300 font-mono tracking-widest placeholder-gray-500 focus:outline-none focus:border-cyan-400 text-center"
+                />
+              </div>
+              <div className="sm:col-span-1">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-full min-h-[44px] py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-bold font-mono text-xs uppercase tracking-wider rounded-2xl transition-all active:scale-95 cursor-pointer disabled:opacity-50 flex items-center justify-center space-x-1.5 shadow-lg shadow-cyan-500/20"
+                >
+                  {loading ? <Clock className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  <span>Check</span>
+                </button>
+              </div>
+            </div>
+          )}
         </form>
 
         {/* Error Alert */}

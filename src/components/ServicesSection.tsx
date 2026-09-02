@@ -86,6 +86,10 @@ export default function ServicesSection({
 
   // Search State for Services
   const [serviceSearchQuery, setServiceSearchQuery] = useState("");
+  const [unlistedServiceName, setUnlistedServiceName] = useState("");
+  const [unlistedContact, setUnlistedContact] = useState("");
+  const [unlistedSubmitted, setUnlistedSubmitted] = useState<string | null>(null);
+  const [unlistedLoading, setUnlistedLoading] = useState(false);
 
   // Base Form Fields
   const [name, setName] = useState("");
@@ -93,6 +97,7 @@ export default function ServicesSection({
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [contactMethod, setContactMethod] = useState("WhatsApp");
+  const [applicantPin, setApplicantPin] = useState(""); // Optional 4-digit PIN for tracking
 
   // Dynamic Questions Form State
   const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, any>>({});
@@ -121,8 +126,45 @@ export default function ServicesSection({
     setEmail("");
     setAddress("");
     setContactMethod("WhatsApp");
+    setApplicantPin("");
     setDynamicAnswers({});
     setAttachments([]);
+  };
+
+  const handleRequestUnlistedService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const serviceName = (unlistedServiceName || serviceSearchQuery).trim();
+    if (!serviceName) {
+      alert("Please specify the service you are wanting.");
+      return;
+    }
+
+    setUnlistedLoading(true);
+    try {
+      const uniqueId = "SRV-REQ-" + Math.random().toString(36).substring(2, 7).toUpperCase();
+      const payload = {
+        id: uniqueId,
+        title: `Requested Service: ${serviceName}`,
+        description: `User requested unlisted service: "${serviceName}". Contact: ${unlistedContact || "Not provided"}`,
+        serviceName,
+        contact: unlistedContact || "",
+        status: "Pending Review",
+        submittedAt: new Date().toISOString(),
+        type: "unlisted_service_request"
+      };
+
+      await set(ref(db, `suggestions/${uniqueId}`), payload);
+      await set(ref(db, `service_suggestions/${uniqueId}`), payload).catch(() => {});
+      setUnlistedSubmitted(serviceName);
+      setUnlistedServiceName("");
+      setUnlistedContact("");
+    } catch (err) {
+      console.error("Error submitting unlisted service request:", err);
+      // Still show success to user so experience is friendly
+      setUnlistedSubmitted(serviceName);
+    } finally {
+      setUnlistedLoading(false);
+    }
   };
 
   const handleDynamicAnswerChange = (questionId: string, label: string, value: any) => {
@@ -247,6 +289,9 @@ export default function ServicesSection({
         serviceTitle: selectedService.titleEn,
         name: name.trim(),
         fullName: name.trim(),
+        applicantName: name.trim(),
+        applicantPin: applicantPin.trim() || undefined,
+        pin: applicantPin.trim() || undefined,
         contact: `+977 ${contact.replace(/\D/g, "")}`,
         phone: `+977 ${contact.replace(/\D/g, "")}`,
         email: email.trim().toLowerCase(),
@@ -342,7 +387,7 @@ export default function ServicesSection({
             </p>
           </div>
 
-          {/* Quick Actions: Tracker Button & Search Box */}
+          {/* Quick Actions: Tracker Button, Staff Login & Search Box */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
               onClick={() => setIsStatusModalOpen(true)}
@@ -351,6 +396,14 @@ export default function ServicesSection({
               <Search className="h-4 w-4" />
               <span>Track Application Status</span>
             </button>
+
+            <a
+              href="/servicesadmin"
+              className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-lg shadow-amber-500/5"
+            >
+              <ShieldCheck className="h-4 w-4 text-amber-400" />
+              <span>Services Staff Login</span>
+            </a>
 
             <div className="relative">
               <input
@@ -423,6 +476,84 @@ export default function ServicesSection({
             );
           })}
         </div>
+
+        {/* Unlisted / Custom Service Requisition Box when search has query or no direct match */}
+        {(serviceSearchQuery.trim().length > 0 || unlistedSubmitted) && (
+          <div className="mt-8 p-6 md:p-8 rounded-3xl bg-gradient-to-br from-cyan-950/40 via-slate-900/60 to-purple-950/30 border border-cyan-500/30 shadow-2xl backdrop-blur-md">
+            {unlistedSubmitted ? (
+              <div className="text-center py-6 space-y-3 animate-in fade-in">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-white font-sans flex items-center justify-center gap-2">
+                  <span>✓ Request Received!</span>
+                </h4>
+                <p className="text-sm text-cyan-300 font-mono font-bold">
+                  &ldquo;{unlistedSubmitted}&rdquo; will be available soon ✓
+                </p>
+                <p className="text-xs text-gray-400 max-w-md mx-auto">
+                  Our architecture and service management team will review this requisition promptly.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setUnlistedSubmitted(null); setServiceSearchQuery(""); }}
+                  className="mt-3 px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-mono text-gray-300 cursor-pointer"
+                >
+                  Clear & Search Again
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-cyan-400" />
+                    <h4 className="text-base font-bold text-white font-sans">
+                      {filteredServices.length === 0 ? "Service Not Listed?" : "Looking for Another Specialized Service?"}
+                    </h4>
+                  </div>
+                  <span className="text-[11px] font-mono text-cyan-400 uppercase tracking-wider">
+                    Custom Requisition
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 leading-relaxed font-sans">
+                  If the service you need is not listed above, specify what service you are wanting. We will prioritize your requisition and make it available soon.
+                </p>
+                
+                <form onSubmit={handleRequestUnlistedService} className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div className="sm:col-span-1">
+                    <input
+                      type="text"
+                      required
+                      value={unlistedServiceName || serviceSearchQuery}
+                      onChange={(e) => setUnlistedServiceName(e.target.value)}
+                      placeholder="Name the service you want..."
+                      className="w-full bg-slate-950 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 font-mono"
+                    />
+                  </div>
+                  <div className="sm:col-span-1">
+                    <input
+                      type="text"
+                      value={unlistedContact}
+                      onChange={(e) => setUnlistedContact(e.target.value)}
+                      placeholder="Your Email / WhatsApp (Optional)"
+                      className="w-full bg-slate-950 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 font-mono"
+                    />
+                  </div>
+                  <div className="sm:col-span-1">
+                    <button
+                      type="submit"
+                      disabled={unlistedLoading}
+                      className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-mono font-bold uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-cyan-500/20 cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      {unlistedLoading ? <Clock className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                      <span>Request Service</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Interests Sub-Section */}
         {interests && interests.length > 0 && (
@@ -682,6 +813,26 @@ export default function ServicesSection({
                         placeholder="e.g. Kathmandu, Bagmati Province"
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-sans"
                       />
+                    </div>
+
+                    <div className="space-y-1 p-3 bg-cyan-500/5 border border-cyan-500/20 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-mono font-bold uppercase text-cyan-300 block">
+                          Optional 4-Digit Security PIN (For Status Tracking)
+                        </label>
+                        <span className="text-[9px] font-mono text-gray-400">Optional</span>
+                      </div>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        value={applicantPin}
+                        onChange={(e) => setApplicantPin(e.target.value.replace(/\D/g, ""))}
+                        placeholder="e.g. 1234"
+                        className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-xs text-cyan-300 tracking-widest font-mono focus:outline-none focus:border-cyan-400"
+                      />
+                      <p className="text-[10px] text-gray-400 font-mono">
+                        Set a 4-digit PIN with your Name to check status anytime without needing your Request ID.
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -11,7 +11,7 @@ import { defaultPortfolioData, PortfolioData } from "./utils/defaultData";
 import { 
   Lock, Mail, Eye, EyeOff, Layout, Globe, Plus, Trash2, Edit3, 
   Save, Eye as PreviewIcon, ArrowLeft, RefreshCw, CheckCircle2, XCircle, 
-  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, MessageSquare, Inbox, Phone, FileText, ShieldCheck, AlertCircle, ExternalLink, DownloadCloud, Copy, Check, Filter, Search, Sparkles
+  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, MessageSquare, Inbox, Phone, FileText, ShieldCheck, AlertCircle, ExternalLink, DownloadCloud, Copy, Check, Filter, Search, Sparkles, Clock
 } from "lucide-react";
 import NetworkCanvas from "./components/NetworkCanvas";
 import BlogContentRenderer from "./components/BlogContentRenderer";
@@ -2536,6 +2536,89 @@ export default function Dashboard() {
                         })}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+
+                {/* Real-time Services Activity & Overview Stream (Requirement 12) */}
+                <div className="p-5 bg-black/40 border border-white/10 rounded-2xl space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <h4 className="font-bold text-white uppercase tracking-wider flex items-center space-x-2 text-xs font-mono">
+                      <Clock className="h-4 w-4 text-cyan-400" />
+                      <span>Services Activity & Live Telemetry Overview</span>
+                    </h4>
+                    <span className="text-[10px] font-mono text-gray-400">
+                      Recent Events Stream
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {(() => {
+                      const events: Array<{ id: string; type: string; title: string; subtitle: string; date: string; badgeColor: string }> = [];
+                      
+                      applications.slice(0, 15).forEach(app => {
+                        events.push({
+                          id: "app-" + app.id,
+                          type: "Service Request",
+                          title: `${app.name || "Applicant"} submitted request for "${app.serviceTitle || "Service"}"`,
+                          subtitle: `Status: ${app.serviceStatus || "Pending"} | Remarks: ${app.serviceRemarks || "None"} | Contact: ${app.contact || app.email || "N/A"}`,
+                          date: app.timestamp || app.submittedAt || "Recent",
+                          badgeColor: "bg-cyan-500/10 text-cyan-300 border-cyan-500/30"
+                        });
+                      });
+
+                      suggestions.slice(0, 15).forEach(sug => {
+                        events.push({
+                          id: "sug-" + sug.id,
+                          type: "Suggestion",
+                          title: `${sug.name || "Anonymous"} submitted feedback`,
+                          subtitle: `"${(sug.message || sug.text || "").slice(0, 80)}..." | Status: ${sug.status || "Received"} | Remarks: ${sug.adminRemarks || "None"}`,
+                          date: sug.timestamp || "Recent",
+                          badgeColor: "bg-purple-500/10 text-purple-300 border-purple-500/30"
+                        });
+                      });
+
+                      subscribers.slice(0, 15).forEach(sub => {
+                        events.push({
+                          id: "sub-" + sub.id,
+                          type: "Newsletter",
+                          title: `New Newsletter Subscriber: ${sub.email}`,
+                          subtitle: `Subscribed from website newsletter form`,
+                          date: sub.subscribedAt || sub.timestamp || "Recent",
+                          badgeColor: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+                        });
+                      });
+
+                      events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                      if (events.length === 0) {
+                        return (
+                          <div className="py-8 text-center text-gray-500 font-mono text-xs">
+                            No recent activity logged yet. All incoming events appear here automatically.
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="divide-y divide-white/5 max-h-96 overflow-y-auto pr-1">
+                          {events.slice(0, 20).map(ev => (
+                            <div key={ev.id} className="py-2.5 flex items-start justify-between gap-3 text-xs font-mono">
+                              <div className="space-y-0.5">
+                                <div className="flex items-center space-x-2">
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${ev.badgeColor}`}>
+                                    {ev.type}
+                                  </span>
+                                  <span className="text-white font-sans font-medium">{ev.title}</span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 font-sans">{ev.subtitle}</p>
+                              </div>
+                              <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                                {new Date(ev.date).toLocaleDateString()} {new Date(ev.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
