@@ -240,14 +240,17 @@ export interface ServiceInvoice {
 
 export interface ServiceItem {
   id: string;
+  category?: "government" | "private" | "Government" | "Private";
+  images?: string[];
+  imageUrl?: string;
   titleEn: string;
-  titleNp: string;
+  titleNp?: string;
   descriptionEn: string;
-  descriptionNp: string;
+  descriptionNp?: string;
   priceEn: string;
-  priceNp: string;
+  priceNp?: string;
   whatsappMessageEn: string;
-  whatsappMessageNp: string;
+  whatsappMessageNp?: string;
   officialLink: string;
   icon: string;
   photoReqsEn?: string;
@@ -914,6 +917,12 @@ Amit Joshi`,
   services: [
     {
       id: "serv-1",
+      category: "Private",
+      imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&auto=format&fit=crop&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&auto=format&fit=crop&q=80"
+      ],
       titleEn: "Custom Enterprise Portal Design",
       titleNp: "अनुकूलन इन्टरप्राइज पोर्टल डिजाइन",
       descriptionEn: "Production-ready web systems featuring modular layout components, light-dark reactive nodes, and advanced server scaling.",
@@ -969,6 +978,12 @@ Amit Joshi`,
     },
     {
       id: "serv-2",
+      category: "Private",
+      imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200&auto=format&fit=crop&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1200&auto=format&fit=crop&q=80"
+      ],
       titleEn: "Secure Firebase/CMS Architecture",
       titleNp: "सुरक्षित फायरबेस/CMS आर्किटेक्चर",
       descriptionEn: "Zero-latency database design with strict Firebase rule enforcement, Single Session client verification, and custom Rich-Text state tools.",
@@ -1012,6 +1027,11 @@ Amit Joshi`,
     },
     {
       id: "serv-3",
+      category: "Private",
+      imageUrl: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=1200&auto=format&fit=crop&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=1200&auto=format&fit=crop&q=80"
+      ],
       titleEn: "Interactive UI/UX & Web Performance Audits",
       titleNp: "अन्तरक्रियात्मक UI/UX र वेब प्रदर्शन अडिट",
       descriptionEn: "Deep diagnostic audits targeting core web vitals, canvas animations, and localized SEO schemas.",
@@ -1040,6 +1060,162 @@ Amit Joshi`,
           fieldType: "long_text",
           required: false,
           placeholder: "Slow initial page loads, high LCP scores, mobile rendering glitches..."
+        }
+      ]
+    },
+    {
+      id: "serv-4",
+      category: "Government",
+      imageUrl: "https://images.unsplash.com/photo-1577495508048-b635879837f1?w=1200&auto=format&fit=crop&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1577495508048-b635879837f1?w=1200&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1200&auto=format&fit=crop&q=80"
+      ],
+      titleEn: "Government E-Governance & Citizen Portal Integration",
+      titleNp: "सरकारी ई-गभर्नेन्स र नागरिक पोर्टल एकीकरण",
+      descriptionEn: "Secure municipal and federal government systems integration with Nagarik App APIs, national ID validation, and localized tax clearance workflows.",
+      descriptionNp: "नागरिक एप एपीआई, राष्ट्रिय परिचयपत्र प्रमाणिकरण, र स्थानीय कर चुक्ता कार्यप्रवाह सहित सुरक्षित नगरपालिका र संघीय सरकारी प्रणाली एकीकरण।",
+      priceEn: "NPR 180,000",
+      priceNp: "रु १,८०,०००",
+      whatsappMessageEn: "Hello Amit, I am inquiring regarding the Government E-Governance & Citizen Portal Integration service.",
+      whatsappMessageNp: "नमस्कार अमित, म सरकारी ई-गभर्नेन्स र नागरिक पोर्टल एकीकरण सेवाको बारेमा सोधपुछ गर्न चाहन्छु।",
+      officialLink: "https://amitjoshi.info.np/services/egov",
+      icon: "Landmark",
+      questions: [
+        {
+          id: "q-401",
+          order: 1,
+          labelEn: "Government Department or Local Body (Municipality/Ward)",
+          labelNp: "सरकारी विभाग वा स्थानीय निकाय",
+          fieldType: "short_text",
+          required: true,
+          placeholder: "e.g. Kathmandu Metropolitan City - Ward No. 4"
+        },
+        {
+          id: "q-402",
+          order: 2,
+          labelEn: "Required Citizen Services to Automate",
+          labelNp: "स्वचालित गर्नुपर्ने नागरिक सेवाहरू",
+          fieldType: "dropdown",
+          required: true,
+          options: ["Vital Registration (Birth/Death)", "Property Tax Clearance", "Business Recommendation", "Full Digital Citizen Desk"],
+          defaultValue: "Full Digital Citizen Desk"
+        },
+        {
+          id: "q-403",
+          order: 3,
+          labelEn: "Security Compliance Level Required",
+          labelNp: "आवश्यक सुरक्षा अनुपालन स्तर",
+          fieldType: "dropdown",
+          required: true,
+          options: ["National Security Standards Level 3", "Standard Government IT Guidelines", "Municipal Level"],
+          defaultValue: "National Security Standards Level 3"
+        },
+        {
+          id: "q-404",
+          order: 4,
+          labelEn: "Official Letter of Intent / Terms of Reference (PDF)",
+          labelNp: "आधिकारिक आशय पत्र वा कार्य सर्तहरू (PDF)",
+          fieldType: "file_upload",
+          required: false,
+          allowedFileTypes: ["pdf", "doc", "docx"]
+        }
+      ]
+    },
+    {
+      id: "serv-5",
+      category: "Government",
+      imageUrl: "https://images.unsplash.com/photo-1524661135-423995f22d0b?w=1200&auto=format&fit=crop&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1524661135-423995f22d0b?w=1200&auto=format&fit=crop&q=80"
+      ],
+      titleEn: "Public Infrastructure & Land Records GIS Mapping",
+      titleNp: "सार्वजनिक पूर्वाधार र भूमि अभिलेख GIS नक्सांकन",
+      descriptionEn: "Geospatial mapping and cadastral GIS integration for public infrastructure, ward boundary surveying, and real-time municipal resource tracking.",
+      descriptionNp: "सार्वजनिक पूर्वाधार, वडा सीमा सर्वेक्षण, र वास्तविक समयमा नगरपालिका स्रोत ट्र्याकिङका लागि भूस्थानिक नक्सांकन र क्याडास्ट्रल GIS एकीकरण।",
+      priceEn: "NPR 160,000",
+      priceNp: "रु १,६०,०००",
+      whatsappMessageEn: "Hello Amit, I would like to consult on the Public Infrastructure & Land Records GIS Mapping service.",
+      whatsappMessageNp: "नमस्कार अमित, म सार्वजनिक पूर्वाधार र भूमि अभिलेख GIS नक्सांकन सेवामा परामर्श लिन चाहन्छु।",
+      officialLink: "https://amitjoshi.info.np/services/gis",
+      icon: "MapPin",
+      questions: [
+        {
+          id: "q-501",
+          order: 1,
+          labelEn: "Geographic Coverage & Municipality Area",
+          labelNp: "भौगोलिक क्षेत्र र नगरपालिकाको नाम",
+          fieldType: "short_text",
+          required: true,
+          placeholder: "e.g. Duhu Rural Municipality, Darchula"
+        },
+        {
+          id: "q-502",
+          order: 2,
+          labelEn: "Target GIS Mapping Layers",
+          labelNp: "लक्षित GIS तहहरू",
+          fieldType: "dropdown",
+          required: true,
+          options: ["Road & Water Infrastructure", "Cadastral Land Parcels", "Disaster Vulnerability Zones", "Full Comprehensive Suite"],
+          defaultValue: "Full Comprehensive Suite"
+        },
+        {
+          id: "q-503",
+          order: 3,
+          labelEn: "Specific Spatial Requirements",
+          labelNp: "विशिष्ट स्थानिय आवश्यकताहरू",
+          fieldType: "long_text",
+          required: false,
+          placeholder: "Describe existing shapefiles, GPS drone survey plans, or coordinate projections..."
+        }
+      ]
+    },
+    {
+      id: "serv-6",
+      category: "Private",
+      imageUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80",
+      images: [
+        "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200&auto=format&fit=crop&q=80"
+      ],
+      titleEn: "Corporate Cloud Migration & DevOps Pipeline",
+      titleNp: "कर्पोरेट क्लाउड माइग्रेसन र DevOps पाइपलाइन",
+      descriptionEn: "Enterprise CI/CD automation, Docker container orchestration, Cloud Run scaling, and disaster recovery backup configurations.",
+      descriptionNp: "इन्टरप्राइज CI/CD स्वचालन, डकर कन्टेनर अर्केस्ट्रेसन, क्लाउड रन स्केलिङ, र विपद् पुनर्प्राप्ति ब्याकअप कन्फिगरेसन।",
+      priceEn: "NPR 110,000",
+      priceNp: "रु १,१०,०००",
+      whatsappMessageEn: "Hello Amit, I am interested in Corporate Cloud Migration & DevOps Pipeline for our engineering infrastructure.",
+      whatsappMessageNp: "नमस्कार अमित, म हाम्रो इन्जिनियरिङ पूर्वाधारको लागि कर्पोरेट क्लाउड माइग्रेसन र DevOps पाइपलाइनमा इच्छुक छु।",
+      officialLink: "https://amitjoshi.info.np/services/devops",
+      icon: "Cloud",
+      questions: [
+        {
+          id: "q-601",
+          order: 1,
+          labelEn: "Current Hosting / Cloud Provider",
+          labelNp: "हालको होस्टिङ वा क्लाउड प्रदायक",
+          fieldType: "dropdown",
+          required: true,
+          options: ["Google Cloud (GCP)", "Amazon Web Services (AWS)", "DigitalOcean / Linode", "On-Premises Bare-Metal Server"],
+          defaultValue: "Google Cloud (GCP)"
+        },
+        {
+          id: "q-602",
+          order: 2,
+          labelEn: "Current Application Tech Stack",
+          labelNp: "अनुप्रयोगको प्राविधिक स्ट्याक",
+          fieldType: "short_text",
+          required: true,
+          placeholder: "e.g. Node.js, React, Docker, PostgreSQL"
+        },
+        {
+          id: "q-603",
+          order: 3,
+          labelEn: "Target Deployment Goal & Uptime SLA",
+          labelNp: "लक्ष्य डिप्लोइमेन्ट लक्ष्य र अपटाइम SLA",
+          fieldType: "long_text",
+          required: false,
+          placeholder: "Describe auto-scaling objectives, deployment frequency, and security compliance..."
         }
       ]
     }
@@ -1096,3 +1272,363 @@ Amit Joshi`,
     }
   ]
 };
+
+export const defaultServiceSubmissions: any[] = [
+  {
+    id: "REQ-7B291",
+    serviceId: "serv-4",
+    serviceTitle: "Government E-Governance & Citizen Portal Integration",
+    serviceCategory: "Government",
+    fullName: "Bikash Sharma",
+    email: "bikash.sharma@moest.gov.np",
+    phone: "+977 9841234567",
+    address: "Singha Durbar, Ministry of Education, Kathmandu",
+    contactMethod: "Email",
+    securityPin: "1234",
+    status: "In Progress",
+    billingStatus: "Billed",
+    allowEdit: false,
+    remarks: "Technical requirement specification validated. Nagarik App API staging credentials prepared for sandbox testing.",
+    amount: 180000,
+    amountFormatted: "NPR 180,000",
+    currency: "NPR",
+    invoiceId: "INV-REQ-7B291",
+    submittedAt: "2026-08-28T10:30:00.000Z",
+    timestamp: "2026-08-28T10:30:00.000Z",
+    answers: {
+      "q-401": { label: "Government Department or Local Body (Municipality/Ward)", value: "Ministry of Education, Science and Technology - Central Citizen Hub" },
+      "q-402": { label: "Required Citizen Services to Automate", value: "Full Digital Citizen Desk" },
+      "q-403": { label: "Security Compliance Level Required", value: "National Security Standards Level 3" }
+    }
+  },
+  {
+    id: "REQ-8C392",
+    serviceId: "serv-1",
+    serviceTitle: "Custom Enterprise Portal Design",
+    serviceCategory: "Private",
+    fullName: "Anisha Thapa",
+    email: "anisha.thapa@apexholdings.np",
+    phone: "+977 9851098765",
+    address: "Narayanhiti Path, Durbar Marg, Kathmandu",
+    contactMethod: "WhatsApp",
+    securityPin: "4321",
+    status: "Approved",
+    billingStatus: "Paid",
+    allowEdit: false,
+    remarks: "Design system sprint kick-off completed. Figma prototypes approved by board.",
+    amount: 150000,
+    amountFormatted: "NPR 150,000",
+    currency: "NPR",
+    invoiceId: "INV-REQ-8C392",
+    submittedAt: "2026-08-29T14:15:00.000Z",
+    timestamp: "2026-08-29T14:15:00.000Z",
+    answers: {
+      "q-1": { label: "Organization / Company Name", value: "Apex Holdings Nepal Pvt. Ltd." },
+      "q-2": { label: "Expected Delivery Timeline", value: "Standard (1 Month)" },
+      "q-3": { label: "Project Scope & Technical Requirements", value: "Multi-tenant client analytics dashboard with localized billing exports and automated reporting." }
+    }
+  },
+  {
+    id: "REQ-9D493",
+    serviceId: "serv-5",
+    serviceTitle: "Public Infrastructure & Land Records GIS Mapping",
+    serviceCategory: "Government",
+    fullName: "Sunil Adhikari",
+    email: "sunil.adhikari@lalitpur.gov.np",
+    phone: "+977 9801239874",
+    address: "Pulchowk, Lalitpur Metropolitan City Office",
+    contactMethod: "Phone Call",
+    securityPin: "5678",
+    status: "In Review",
+    billingStatus: "Unbilled",
+    allowEdit: true,
+    remarks: "Initial GIS satellite shapefiles received. Verifying coordinate boundaries.",
+    amount: 160000,
+    amountFormatted: "NPR 160,000",
+    currency: "NPR",
+    invoiceId: "INV-REQ-9D493",
+    submittedAt: "2026-08-30T09:00:00.000Z",
+    timestamp: "2026-08-30T09:00:00.000Z",
+    answers: {
+      "q-501": { label: "Geographic Coverage & Municipality Area", value: "Lalitpur Metropolitan City - Wards 1 to 7" },
+      "q-502": { label: "Target GIS Mapping Layers", value: "Full Comprehensive Suite" },
+      "q-503": { label: "Specific Spatial Requirements", value: "Integration with existing cadastral land parcels and municipal road asset registry." }
+    }
+  },
+  {
+    id: "REQ-5A184",
+    serviceId: "serv-2",
+    serviceTitle: "Secure Firebase/CMS Architecture",
+    serviceCategory: "Private",
+    fullName: "Pooja Shrestha",
+    email: "pooja.shrestha@himalayalogistics.com",
+    phone: "+977 9812345678",
+    address: "Birgunj Inland Port & Logistics Hub",
+    contactMethod: "WhatsApp",
+    securityPin: "8888",
+    status: "Completed",
+    billingStatus: "Paid",
+    allowEdit: false,
+    remarks: "Production deployment live with 99.98% SLA and sub-second realtime query response.",
+    amount: 95000,
+    amountFormatted: "NPR 95,000",
+    currency: "NPR",
+    invoiceId: "INV-REQ-5A184",
+    submittedAt: "2026-08-25T11:20:00.000Z",
+    timestamp: "2026-08-25T11:20:00.000Z",
+    answers: {
+      "q-201": { label: "Current Database Platform", value: "Firebase Realtime Database" },
+      "q-202": { label: "Target Security Level & Concurrency", value: "2,000 simultaneous drivers and dispatchers with strict RBAC" }
+    }
+  },
+  {
+    id: "REQ-6F285",
+    serviceId: "serv-3",
+    serviceTitle: "Interactive UI/UX & Web Performance Audits",
+    serviceCategory: "Private",
+    fullName: "Ramesh Karki",
+    email: "ramesh.karki@cyberaudit.np",
+    phone: "+977 9860123456",
+    address: "Tinkune, Kathmandu",
+    contactMethod: "Email",
+    securityPin: "9999",
+    status: "Pending Review",
+    billingStatus: "Unbilled",
+    allowEdit: true,
+    remarks: "Received initial URL. Diagnostic Lighthouse & Core Web Vitals profiling underway.",
+    amount: 45000,
+    amountFormatted: "NPR 45,000",
+    currency: "NPR",
+    invoiceId: "INV-REQ-6F285",
+    submittedAt: "2026-09-01T08:45:00.000Z",
+    timestamp: "2026-09-01T08:45:00.000Z",
+    answers: {
+      "q-301": { label: "Website URL to Audit", value: "https://clientportal.cyberaudit.np" },
+      "q-302": { label: "Key Performance Bottlenecks Encountered", value: "Slow initial page loads on 4G cellular connections, high cumulative layout shifts." }
+    }
+  }
+];
+
+export const defaultServiceInvoices: ServiceInvoice[] = [
+  {
+    invoiceId: "INV-REQ-7B291",
+    submissionId: "REQ-7B291",
+    serviceId: "serv-4",
+    serviceTitle: "Government E-Governance & Citizen Portal Integration",
+    clientName: "Bikash Sharma",
+    clientEmail: "bikash.sharma@moest.gov.np",
+    clientPhone: "+977 9841234567",
+    clientAddress: "Singha Durbar, Ministry of Education, Kathmandu",
+    amount: 180000,
+    amountFormatted: "NPR 180,000",
+    currency: "NPR",
+    submittedAt: "2026-08-28T10:30:00.000Z",
+    paymentDueAt: "2026-08-28T22:30:00.000Z",
+    paymentStatus: "Paid",
+    paymentMethod: "Bank Wire / Government Budget Code Transfer",
+    paymentReference: "GOV-TXN-2026-9812",
+    paidAt: "2026-08-28T16:00:00.000Z",
+    notes: "Official Government E-Governance Integration Milestone 1 payment settled."
+  },
+  {
+    invoiceId: "INV-REQ-8C392",
+    submissionId: "REQ-8C392",
+    serviceId: "serv-1",
+    serviceTitle: "Custom Enterprise Portal Design",
+    clientName: "Anisha Thapa",
+    clientEmail: "anisha.thapa@apexholdings.np",
+    clientPhone: "+977 9851098765",
+    clientAddress: "Narayanhiti Path, Durbar Marg, Kathmandu",
+    amount: 150000,
+    amountFormatted: "NPR 150,000",
+    currency: "NPR",
+    submittedAt: "2026-08-29T14:15:00.000Z",
+    paymentDueAt: "2026-08-30T02:15:00.000Z",
+    paymentStatus: "Paid",
+    paymentMethod: "eSewa / Corporate ConnectIPS",
+    paymentReference: "IPS-8829104",
+    paidAt: "2026-08-29T18:40:00.000Z",
+    notes: "Corporate Enterprise UI Design retainer fee cleared."
+  },
+  {
+    invoiceId: "INV-REQ-9D493",
+    submissionId: "REQ-9D493",
+    serviceId: "serv-5",
+    serviceTitle: "Public Infrastructure & Land Records GIS Mapping",
+    clientName: "Sunil Adhikari",
+    clientEmail: "sunil.adhikari@lalitpur.gov.np",
+    clientPhone: "+977 9801239874",
+    clientAddress: "Pulchowk, Lalitpur Metropolitan City Office",
+    amount: 160000,
+    amountFormatted: "NPR 160,000",
+    currency: "NPR",
+    submittedAt: "2026-08-30T09:00:00.000Z",
+    paymentDueAt: "2026-08-30T21:00:00.000Z",
+    paymentStatus: "Pending",
+    notes: "Awaiting municipal procurement voucher release for GIS survey layers."
+  },
+  {
+    invoiceId: "INV-REQ-5A184",
+    submissionId: "REQ-5A184",
+    serviceId: "serv-2",
+    serviceTitle: "Secure Firebase/CMS Architecture",
+    clientName: "Pooja Shrestha",
+    clientEmail: "pooja.shrestha@himalayalogistics.com",
+    clientPhone: "+977 9812345678",
+    clientAddress: "Birgunj Inland Port & Logistics Hub",
+    amount: 95000,
+    amountFormatted: "NPR 95,000",
+    currency: "NPR",
+    submittedAt: "2026-08-25T11:20:00.000Z",
+    paymentDueAt: "2026-08-25T23:20:00.000Z",
+    paymentStatus: "Paid",
+    paymentMethod: "Khalti Corporate Gateway",
+    paymentReference: "KHL-910283",
+    paidAt: "2026-08-25T15:10:00.000Z",
+    notes: "High-concurrency backend architecture setup invoice cleared."
+  },
+  {
+    invoiceId: "INV-REQ-6F285",
+    submissionId: "REQ-6F285",
+    serviceId: "serv-3",
+    serviceTitle: "Interactive UI/UX & Web Performance Audits",
+    clientName: "Ramesh Karki",
+    clientEmail: "ramesh.karki@cyberaudit.np",
+    clientPhone: "+977 9860123456",
+    clientAddress: "Tinkune, Kathmandu",
+    amount: 45000,
+    amountFormatted: "NPR 45,000",
+    currency: "NPR",
+    submittedAt: "2026-09-01T08:45:00.000Z",
+    paymentDueAt: "2026-09-01T20:45:00.000Z",
+    paymentStatus: "Pending",
+    notes: "Audit engagement token invoice sent to client."
+  }
+];
+
+export const defaultServiceSuggestions: any[] = [
+  {
+    id: "SUG-9101",
+    name: "Dipak Bhattarai",
+    email: "dipak.bhattarai@gmail.com",
+    phone: "+977 9841889900",
+    serviceName: "Government Land Registration Portal Integration",
+    category: "Government Service Requisition",
+    message: "Requesting a dedicated API module connecting municipal land tax databases with citizen biometric smart cards.",
+    status: "Approved for Roadmap",
+    adminRemarks: "Feasibility confirmed. Scheduled for development in Q4 2026.",
+    timestamp: "2026-08-27T11:00:00.000Z"
+  },
+  {
+    id: "SUG-9102",
+    name: "Kritika Aryal",
+    email: "kritika.aryal@techsansar.com",
+    phone: "+977 9851234123",
+    serviceName: "AI Optical Character Recognition for Devanagari Documents",
+    category: "Feature Suggestion",
+    message: "It would be great to have an automated Devanagari OCR service to extract text from scanned paper forms directly into Nepali fields.",
+    status: "Under Feasibility",
+    adminRemarks: "Testing Gemini multimodal vision pipeline for Devanagari character recognition accuracy.",
+    timestamp: "2026-08-29T16:20:00.000Z"
+  },
+  {
+    id: "SUG-9103",
+    name: "Manoj Chaudhary",
+    email: "manoj.c@teraitransport.com",
+    phone: "+977 9848123456",
+    serviceName: "Offline-First Mobile PWA for Remote Field Teams",
+    category: "Unlisted Service Requisition",
+    message: "We need an offline data collection app that syncs automatically when field agents re-enter cellular network coverage.",
+    status: "Approved for Roadmap",
+    adminRemarks: "Included in standard mobile architecture offerings.",
+    timestamp: "2026-08-31T09:15:00.000Z"
+  },
+  {
+    id: "SUG-9104",
+    name: "Suraj Pandey",
+    email: "suraj.pandey@fintech.np",
+    phone: "+977 9803334455",
+    serviceName: "ConnectIPS Direct Merchant API Plugin",
+    category: "Fintech Requisition",
+    message: "Please introduce a pre-built ConnectIPS merchant integration boilerplate for Next.js and React Vite apps.",
+    status: "Pending Review",
+    adminRemarks: "Reviewing Nepal Clearing House (NCHL) documentation.",
+    timestamp: "2026-09-01T12:00:00.000Z"
+  }
+];
+
+export const defaultNewsletterSubscribers: any[] = [
+  {
+    id: "sub-1",
+    email: "aarav.sharma@gov.np",
+    name: "Aarav Sharma",
+    source: "Website Footer",
+    status: "Active",
+    subscribedAt: "2026-08-15T08:00:00.000Z",
+    timestamp: "2026-08-15T08:00:00.000Z"
+  },
+  {
+    id: "sub-2",
+    email: "sneha.bhandari@technepal.org",
+    name: "Sneha Bhandari",
+    source: "Website Footer",
+    status: "Active",
+    subscribedAt: "2026-08-18T12:30:00.000Z",
+    timestamp: "2026-08-18T12:30:00.000Z"
+  },
+  {
+    id: "sub-3",
+    email: "dev.team@apexholdings.com",
+    name: "Apex Engineering Group",
+    source: "Services Portal",
+    status: "Active",
+    subscribedAt: "2026-08-20T14:45:00.000Z",
+    timestamp: "2026-08-20T14:45:00.000Z"
+  },
+  {
+    id: "sub-4",
+    email: "bikram.adhikari@kathmandu.gov.np",
+    name: "Bikram Adhikari",
+    source: "E-Governance Desk",
+    status: "Active",
+    subscribedAt: "2026-08-22T09:10:00.000Z",
+    timestamp: "2026-08-22T09:10:00.000Z"
+  },
+  {
+    id: "sub-5",
+    email: "pramod.k@cloudinfra.com.np",
+    name: "Pramod K.",
+    source: "Blog Article",
+    status: "Active",
+    subscribedAt: "2026-08-24T16:20:00.000Z",
+    timestamp: "2026-08-24T16:20:00.000Z"
+  },
+  {
+    id: "sub-6",
+    email: "anita.maharjan@digitalnepal.com",
+    name: "Anita Maharjan",
+    source: "Website Footer",
+    status: "Active",
+    subscribedAt: "2026-08-27T10:15:00.000Z",
+    timestamp: "2026-08-27T10:15:00.000Z"
+  },
+  {
+    id: "sub-7",
+    email: "rajesh.thapa@kantipurtech.com",
+    name: "Rajesh Thapa",
+    source: "Services Requisition",
+    status: "Active",
+    subscribedAt: "2026-08-29T18:00:00.000Z",
+    timestamp: "2026-08-29T18:00:00.000Z"
+  },
+  {
+    id: "sub-8",
+    email: "sushma.poudel@tribhuvan.edu.np",
+    name: "Sushma Poudel",
+    source: "Website Footer",
+    status: "Active",
+    subscribedAt: "2026-09-01T07:30:00.000Z",
+    timestamp: "2026-09-01T07:30:00.000Z"
+  }
+];
+

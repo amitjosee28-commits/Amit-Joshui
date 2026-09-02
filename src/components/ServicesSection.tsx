@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Heart, Landmark, ExternalLink, FileText, Upload, X, CheckCircle2, 
   Phone, Mail, Sparkles, Printer, ArrowLeft, Search, BookOpen, Calendar, 
   User, ChevronRight, Clock, AlertCircle, Copy, Check, Eye, HelpCircle,
-  Receipt, ShieldCheck, DownloadCloud, Image as ImageIcon
+  Receipt, ShieldCheck, DownloadCloud, Image as ImageIcon, Share2, Building
 } from "lucide-react";
 import { DynamicLucideIcon } from "./ToolkitSection";
 import StatusCheckerModal from "./StatusCheckerModal";
+import ClientPortalModal, { ClientProfile } from "./ClientPortalModal";
 import InvoiceView from "./InvoiceView";
 import { ref, set } from "firebase/database";
 import { db } from "../firebase";
@@ -108,8 +109,65 @@ export default function ServicesSection({
   const [generatedRequestId, setGeneratedRequestId] = useState("");
   const [generatedInvoice, setGeneratedInvoice] = useState<ServiceInvoice | null>(null);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [isClientPortalOpen, setIsClientPortalOpen] = useState(false);
   const [viewingInvoiceModal, setViewingInvoiceModal] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+  const [copiedServiceId, setCopiedServiceId] = useState<string | null>(null);
+
+  // Auto-highlight or open service if linked via ?service=ID
+  useEffect(() => {
+    if (typeof window !== "undefined" && services && services.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const serviceParam = params.get("service");
+      if (serviceParam) {
+        const found = services.find(
+          s => s.id === serviceParam || s.id.toLowerCase() === serviceParam.toLowerCase()
+        );
+        if (found) {
+          setTimeout(() => {
+            const el = document.getElementById(`service-card-${found.id}`);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 300);
+        }
+      }
+    }
+  }, [services]);
+
+  const handleShareService = async (service: ServiceItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const serviceUrl = typeof window !== "undefined"
+      ? `${window.location.origin}/?service=${service.id}#services-section`
+      : `https://amitjoshi.info.np/?service=${service.id}#services-section`;
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${service.titleEn} | Amit Joshi Services`,
+          text: service.descriptionEn,
+          url: serviceUrl
+        });
+        return;
+      } catch (err) {
+        // Fallback to clipboard
+      }
+    }
+
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(serviceUrl);
+      setCopiedServiceId(service.id);
+      setTimeout(() => setCopiedServiceId(null), 2500);
+    }
+  };
+
+  const handleRequestServiceFromPortal = (service: ServiceItem, clientData: ClientProfile) => {
+    setIsClientPortalOpen(false);
+    handleOpenApplyModal(service);
+    if (clientData.fullName) setName(clientData.fullName);
+    if (clientData.phone) setContact(clientData.phone.replace(/\D/g, ""));
+    if (clientData.email) setEmail(clientData.email);
+    if (clientData.address) setAddress(clientData.address);
+    if (clientData.pin) setApplicantPin(clientData.pin);
+  };
 
   const handleOpenApplyModal = (service: ServiceItem) => {
     setSelectedService(service);
@@ -120,13 +178,32 @@ export default function ServicesSection({
     setGeneratedInvoice(null);
     setViewingInvoiceModal(false);
     
-    // Reset inputs
-    setName("");
-    setContact("");
-    setEmail("");
-    setAddress("");
-    setContactMethod("WhatsApp");
-    setApplicantPin("");
+    // Reset inputs if not logged in
+    try {
+      const savedVault = localStorage.getItem("client_vault_session");
+      if (savedVault) {
+        const parsed = JSON.parse(savedVault);
+        if (parsed.fullName) setName(parsed.fullName);
+        if (parsed.phone) setContact(parsed.phone.replace(/\D/g, ""));
+        if (parsed.email) setEmail(parsed.email);
+        if (parsed.address) setAddress(parsed.address);
+        if (parsed.pin) setApplicantPin(parsed.pin);
+      } else {
+        setName("");
+        setContact("");
+        setEmail("");
+        setAddress("");
+        setContactMethod("WhatsApp");
+        setApplicantPin("");
+      }
+    } catch {
+      setName("");
+      setContact("");
+      setEmail("");
+      setAddress("");
+      setContactMethod("WhatsApp");
+      setApplicantPin("");
+    }
     setDynamicAnswers({});
     setAttachments([]);
   };
@@ -387,7 +464,7 @@ export default function ServicesSection({
             </p>
           </div>
 
-          {/* Quick Actions: Tracker Button, Staff Login & Search Box */}
+          {/* Quick Actions: Tracker Button, Client Login & Vault, Search Box */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
               onClick={() => setIsStatusModalOpen(true)}
@@ -397,13 +474,13 @@ export default function ServicesSection({
               <span>Track Application Status</span>
             </button>
 
-            <a
-              href="/servicesadmin"
-              className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-lg shadow-amber-500/5"
+            <button
+              onClick={() => setIsClientPortalOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-lg shadow-purple-500/5"
             >
-              <ShieldCheck className="h-4 w-4 text-amber-400" />
-              <span>Services Staff Login</span>
-            </a>
+              <User className="h-4 w-4 text-purple-400" />
+              <span>Client Portal & Vault</span>
+            </button>
 
             <div className="relative">
               <input
@@ -422,34 +499,79 @@ export default function ServicesSection({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredServices.map((service) => {
             const isDown = service.serverStatus === "down" || service.serverStatus === "offline";
+            const isGov = service.category === "government";
             return (
               <div
                 key={service.id}
+                id={`service-card-${service.id}`}
                 className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-cyan-500/40 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden backdrop-blur-md shadow-xl"
               >
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="p-3 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 group-hover:scale-110 transition-transform">
-                      <DynamicLucideIcon name={service.icon} className="h-6 w-6" />
+                  {/* Service Cover Image (if available) */}
+                  {service.imageUrl && (
+                    <div className="w-full h-40 rounded-2xl overflow-hidden bg-slate-950 border border-white/10 relative group/img">
+                      <img 
+                        src={service.imageUrl} 
+                        alt={service.titleEn} 
+                        className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500" 
+                        loading="lazy"
+                      />
+                      {service.images && service.images.length > 0 && (
+                        <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-mono font-bold text-white flex items-center gap-1 border border-white/10">
+                          <ImageIcon className="w-3 h-3 text-cyan-400" />
+                          <span>+{service.images.length} photos</span>
+                        </div>
+                      )}
                     </div>
-                    {isDown ? (
-                      <span className="text-[10px] font-mono font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full">
-                        Server Offline
+                  )}
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-3 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 group-hover:scale-110 transition-transform">
+                        <DynamicLucideIcon name={service.icon} className="h-6 w-6" />
+                      </div>
+                      {/* Government vs Private Category Badge */}
+                      <span className={`text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-full border flex items-center gap-1 ${
+                        isGov 
+                          ? "bg-blue-500/15 text-blue-300 border-blue-500/30" 
+                          : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                      }`}>
+                        {isGov ? <Landmark className="w-3 h-3 text-blue-400" /> : <Building className="w-3 h-3 text-emerald-400" />}
+                        <span>{isGov ? "Government" : "Private"}</span>
                       </span>
-                    ) : (
-                      <span className="text-[10px] font-mono font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
-                        Active Service
-                      </span>
-                    )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {/* Share Service Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleShareService(service, e)}
+                        title="Share Service Link"
+                        className="p-2 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-gray-400 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer"
+                      >
+                        {copiedServiceId === service.id ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Share2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+
+                      {isDown ? (
+                        <span className="text-[10px] font-mono font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full">
+                          Offline
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-mono font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
+                          Active
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div>
                     <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors font-sans">
                       {service.titleEn}
                     </h3>
-                    {service.titleNp && (
-                      <p className="text-xs text-gray-400 font-sans mt-0.5">{service.titleNp}</p>
-                    )}
                     <p className="text-xs text-gray-400 mt-2 line-clamp-3 leading-relaxed font-sans">
                       {service.descriptionEn}
                     </p>
@@ -478,7 +600,7 @@ export default function ServicesSection({
         </div>
 
         {/* Unlisted / Custom Service Requisition Box when search has query or no direct match */}
-        {(serviceSearchQuery.trim().length > 0 || unlistedSubmitted) && (
+        {(serviceSearchQuery.trim().length > 0 || unlistedSubmitted || filteredServices.length === 0) && (
           <div className="mt-8 p-6 md:p-8 rounded-3xl bg-gradient-to-br from-cyan-950/40 via-slate-900/60 to-purple-950/30 border border-cyan-500/30 shadow-2xl backdrop-blur-md">
             {unlistedSubmitted ? (
               <div className="text-center py-6 space-y-3 animate-in fade-in">
@@ -488,11 +610,12 @@ export default function ServicesSection({
                 <h4 className="text-lg font-bold text-white font-sans flex items-center justify-center gap-2">
                   <span>✓ Request Received!</span>
                 </h4>
-                <p className="text-sm text-cyan-300 font-mono font-bold">
-                  &ldquo;{unlistedSubmitted}&rdquo; will be available soon ✓
+                <p className="text-base text-cyan-300 font-mono font-bold flex items-center justify-center gap-2">
+                  <span>&ldquo;{unlistedSubmitted}&rdquo; will be available soon</span>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 inline" />
                 </p>
                 <p className="text-xs text-gray-400 max-w-md mx-auto">
-                  Our architecture and service management team will review this requisition promptly.
+                  Our architecture and service management team has noted this requisition and will make it available soon.
                 </p>
                 <button
                   type="button"
@@ -508,7 +631,9 @@ export default function ServicesSection({
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-cyan-400" />
                     <h4 className="text-base font-bold text-white font-sans">
-                      {filteredServices.length === 0 ? "Service Not Listed?" : "Looking for Another Specialized Service?"}
+                      {filteredServices.length === 0 
+                        ? `Service Not Listed? Request "${serviceSearchQuery || 'Your Service'}" Here` 
+                        : "Looking for Another Specialized Service?"}
                     </h4>
                   </div>
                   <span className="text-[11px] font-mono text-cyan-400 uppercase tracking-wider">
@@ -526,7 +651,7 @@ export default function ServicesSection({
                       required
                       value={unlistedServiceName || serviceSearchQuery}
                       onChange={(e) => setUnlistedServiceName(e.target.value)}
-                      placeholder="Name the service you want..."
+                      placeholder="Name what service you are wanting..."
                       className="w-full bg-slate-950 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 font-mono"
                     />
                   </div>
@@ -584,6 +709,16 @@ export default function ServicesSection({
             </div>
           </div>
         )}
+
+        {/* Subtle Discreet Staff Terminal Link (hidden from public toolbar) */}
+        <div className="mt-14 text-center">
+          <a
+            href="/servicesadmin"
+            className="text-[11px] text-gray-700 hover:text-gray-400 font-mono transition-colors"
+          >
+            Staff Terminal &bull; Administrative Access
+          </a>
+        </div>
 
       </div>
 
@@ -855,7 +990,6 @@ export default function ServicesSection({
                               <label className="text-xs font-mono font-bold text-white block">
                                 {q.labelEn} {q.required && <span className="text-red-400">*</span>}
                               </label>
-                              {q.labelNp && <span className="text-[10px] text-gray-400">{q.labelNp}</span>}
                             </div>
                             {q.helpText && <p className="text-[11px] text-gray-400 font-mono">{q.helpText}</p>}
 
@@ -1067,6 +1201,14 @@ export default function ServicesSection({
         onClose={() => setIsStatusModalOpen(false)}
         logoUrl={logoUrl}
         faviconUrl={faviconUrl}
+      />
+
+      {/* Client Portal & Vault Modal */}
+      <ClientPortalModal
+        isOpen={isClientPortalOpen}
+        onClose={() => setIsClientPortalOpen(false)}
+        availableServices={services}
+        onRequestService={handleRequestServiceFromPortal}
       />
 
     </section>

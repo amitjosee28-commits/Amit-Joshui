@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { ref, get, set, update, onValue } from "firebase/database";
 import { db } from "../firebase";
-import { defaultPortfolioData, PortfolioData, ServiceAdminUser, ServiceInvoice, ServiceItem, ServiceQuestion, ServiceFieldType, checkUserPermission } from "../utils/defaultData";
+import { 
+  defaultPortfolioData, 
+  PortfolioData, 
+  ServiceAdminUser, 
+  ServiceInvoice, 
+  ServiceItem, 
+  ServiceQuestion, 
+  ServiceFieldType, 
+  checkUserPermission,
+  defaultServiceSubmissions,
+  defaultServiceInvoices,
+  defaultServiceSuggestions,
+  defaultNewsletterSubscribers
+} from "../utils/defaultData";
 import { 
   Lock, User, Key, MessageSquare, Inbox, Phone, Mail, 
   Trash2, CheckCircle2, Clock, FileText, Image as ImageIcon, 
@@ -9,7 +22,8 @@ import {
   Filter, Users, Copy, Check, DownloadCloud, ArrowUpDown, Send,
   Receipt, DollarSign, Calendar, Plus, Edit2, Shield, UserPlus, Eye,
   Sliders, Settings, ArrowUp, ArrowDown, ExternalLink, HelpCircle,
-  X, CheckSquare, ListPlus, Printer, AlertTriangle, Edit3, ShieldAlert
+  X, CheckSquare, ListPlus, Printer, AlertTriangle, Edit3, ShieldAlert,
+  Share2, Database, Layers
 } from "lucide-react";
 import InvoiceView from "./InvoiceView";
 
@@ -36,7 +50,7 @@ export default function AdminServicesPortal() {
   const [applications, setApplications] = useState<any[]>([]);
   const [subscribers, setSubscribers] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<ServiceInvoice[]>([]);
-  const [activeTab, setActiveTab] = useState<"services" | "applications" | "invoices" | "suggestions" | "subscribers" | "rbac">("services");
+  const [activeTab, setActiveTab] = useState<"services" | "applications" | "invoices" | "suggestions" | "subscribers">("services");
   
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,6 +70,9 @@ export default function AdminServicesPortal() {
   const [editingService, setEditingService] = useState<ServiceItem | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<ServiceQuestion | null>(null);
   const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState(false);
+
+  // Share Service notification state
+  const [sharedServiceId, setSharedServiceId] = useState<string | null>(null);
 
   // RBAC User Form state
   const [isEditingUser, setIsEditingUser] = useState(false);
@@ -120,18 +137,23 @@ export default function AdminServicesPortal() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Suggestions
+      // 1. Suggestions & Feedback
       const sugSnap = await get(ref(db, "suggestions"));
+      let sugList: any[] = [];
       if (sugSnap.exists()) {
         const data = sugSnap.val();
-        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
-        setSuggestions(list);
-      } else {
-        setSuggestions([]);
+        sugList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
       }
+      if (sugList.length === 0) {
+        sugList = [...defaultServiceSuggestions];
+        for (const s of defaultServiceSuggestions) {
+          await set(ref(db, `suggestions/${s.id}`), s).catch(() => {});
+        }
+      }
+      sugList.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+      setSuggestions(sugList);
 
-      // 2. Applications
+      // 2. Applications / Submissions
       let appList: any[] = [];
       const serviceAppSnap = await get(ref(db, "service_applications"));
       if (serviceAppSnap.exists()) {
@@ -147,17 +169,29 @@ export default function AdminServicesPortal() {
           }
         });
       }
+      if (appList.length === 0) {
+        appList = [...defaultServiceSubmissions];
+        for (const a of defaultServiceSubmissions) {
+          await set(ref(db, `service_applications/${a.id}`), a).catch(() => {});
+        }
+      }
       appList.sort((a, b) => new Date(b.submittedAt || b.timestamp || 0).getTime() - new Date(a.submittedAt || a.timestamp || 0).getTime());
       setApplications(appList);
 
-      // 3. Invoices
+      // 3. Invoices & Billing
       let invList: ServiceInvoice[] = [];
       const invSnap = await get(ref(db, "invoices"));
       if (invSnap.exists()) {
         const data = invSnap.val();
         invList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        invList.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
       }
+      if (invList.length === 0) {
+        invList = [...defaultServiceInvoices];
+        for (const inv of defaultServiceInvoices) {
+          await set(ref(db, `invoices/${inv.invoiceId}`), inv).catch(() => {});
+        }
+      }
+      invList.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
       setInvoices(invList);
 
       // 4. Newsletter Subscribers
@@ -176,10 +210,68 @@ export default function AdminServicesPortal() {
           }
         });
       }
+      if (subsList.length === 0) {
+        subsList = [...defaultNewsletterSubscribers];
+        for (const sub of defaultNewsletterSubscribers) {
+          await set(ref(db, `subscribers/${sub.id}`), sub).catch(() => {});
+          await set(ref(db, `portfolio/subscribers/${sub.id}`), sub).catch(() => {});
+        }
+        try {
+          localStorage.setItem("newsletter_subscribers", JSON.stringify(subsList.map(s => s.email)));
+        } catch {}
+      }
       subsList.sort((a, b) => new Date(b.subscribedAt || b.timestamp || 0).getTime() - new Date(a.subscribedAt || a.timestamp || 0).getTime());
       setSubscribers(subsList);
+
+      // 5. Ensure all 6 services with categories and images are landed
+      const portSnap = await get(ref(db, "portfolio/services"));
+      if (!portSnap.exists() || !portSnap.val() || portSnap.val().length < 6) {
+        await set(ref(db, "portfolio/services"), defaultPortfolioData.services).catch(() => {});
+        setPortfolioData(prev => ({ ...prev, services: defaultPortfolioData.services }));
+      }
     } catch (err) {
       console.error("Error loading services data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 1-Click Explicit Data Landing Function for Admin
+  const handleLandAllData = async () => {
+    setLoading(true);
+    try {
+      // 1. Land 6 services
+      await set(ref(db, "portfolio/services"), defaultPortfolioData.services);
+      setPortfolioData(prev => ({ ...prev, services: defaultPortfolioData.services }));
+
+      // 2. Land Submissions
+      for (const a of defaultServiceSubmissions) {
+        await set(ref(db, `service_applications/${a.id}`), a);
+      }
+      setApplications([...defaultServiceSubmissions]);
+
+      // 3. Land Invoices
+      for (const inv of defaultServiceInvoices) {
+        await set(ref(db, `invoices/${inv.invoiceId}`), inv);
+      }
+      setInvoices([...defaultServiceInvoices]);
+
+      // 4. Land Suggestions
+      for (const s of defaultServiceSuggestions) {
+        await set(ref(db, `suggestions/${s.id}`), s);
+      }
+      setSuggestions([...defaultServiceSuggestions]);
+
+      // 5. Land Newsletter Subscribers
+      for (const sub of defaultNewsletterSubscribers) {
+        await set(ref(db, `subscribers/${sub.id}`), sub);
+        await set(ref(db, `portfolio/subscribers/${sub.id}`), sub);
+      }
+      setSubscribers([...defaultNewsletterSubscribers]);
+
+      showToast("✓ All 6 Services, Submissions, Invoices, Suggestions & Subscribers landed successfully!");
+    } catch (err: any) {
+      showToast("Error landing data: " + err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -282,13 +374,12 @@ export default function AdminServicesPortal() {
     const newService: ServiceItem = {
       id: `serv-${Date.now().toString(36)}`,
       titleEn: "New Professional Service",
-      titleNp: "नयाँ व्यावसायिक सेवा",
       descriptionEn: "Comprehensive solution designed for optimal performance, high security, and fast turnaround.",
-      descriptionNp: "उत्कृष्ट कार्यसम्पादन, उच्च सुरक्षा र द्रुत सेवाका लागि डिजाइन गरिएको पूर्ण समाधान।",
       priceEn: "NPR 5,000",
-      priceNp: "रु ५,०००",
+      category: "Private",
+      imageUrl: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
+      images: [],
       whatsappMessageEn: "Hello Amit, I would like to inquire about the service.",
-      whatsappMessageNp: "नमस्कार अमित, म यस सेवाको बारेमा सोधपुछ गर्न चाहन्छु।",
       officialLink: "https://amitjoshi.info.np/services",
       icon: "FileText",
       questions: [
@@ -296,7 +387,6 @@ export default function AdminServicesPortal() {
           id: `q-${Date.now()}-1`,
           order: 1,
           labelEn: "Full Legal Name",
-          labelNp: "पूरा नाम",
           fieldType: "short_text",
           required: true,
           placeholder: "e.g. Ram Prasad Sharma",
@@ -306,7 +396,6 @@ export default function AdminServicesPortal() {
           id: `q-${Date.now()}-2`,
           order: 2,
           labelEn: "Contact Phone / Mobile",
-          labelNp: "सम्पर्क फोन / मोबाइल",
           fieldType: "phone",
           required: true,
           placeholder: "98XXXXXXXX",
@@ -316,7 +405,6 @@ export default function AdminServicesPortal() {
           id: `q-${Date.now()}-3`,
           order: 3,
           labelEn: "Email Address",
-          labelNp: "इमेल ठेगाना",
           fieldType: "email",
           required: true,
           placeholder: "client@example.com",
@@ -376,7 +464,6 @@ export default function AdminServicesPortal() {
       id: `q-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       order: newOrder,
       labelEn: fieldType === "image_upload" ? "Upload Photo / Image" : fieldType === "file_upload" ? "Upload Document (PDF)" : "Question Label",
-      labelNp: fieldType === "image_upload" ? "फोटो / छवि अपलोड गर्नुहोस्" : fieldType === "file_upload" ? "कागजात अपलोड गर्नुहोस्" : "प्रश्नको विवरण",
       fieldType: fieldType,
       required: true,
       placeholder: "",
@@ -447,7 +534,6 @@ export default function AdminServicesPortal() {
               id: `q-${Date.now()}-1`,
               order: 1,
               labelEn: "Organization / Full Name",
-              labelNp: "संस्था वा पूरा नाम",
               fieldType: "short_text",
               required: true,
               placeholder: "e.g. Acme Innovations"
@@ -456,7 +542,6 @@ export default function AdminServicesPortal() {
               id: `q-${Date.now()}-2`,
               order: 2,
               labelEn: "Project Scope & Requirements",
-              labelNp: "परियोजना दायरा र आवश्यकताहरू",
               fieldType: "long_text",
               required: true,
               placeholder: "Describe the requirements..."
@@ -465,7 +550,6 @@ export default function AdminServicesPortal() {
               id: `q-${Date.now()}-3`,
               order: 3,
               labelEn: "Upload Supporting Assets (Image)",
-              labelNp: "सम्बन्धित फाइल वा छवि अपलोड गर्नुहोस्",
               fieldType: "image_upload",
               required: false,
               maxImages: 4,
@@ -1066,6 +1150,17 @@ export default function AdminServicesPortal() {
           </a>
 
           <button
+            type="button"
+            onClick={handleLandAllData}
+            disabled={loading}
+            className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+            title="Force-land all 6 services, sample submissions, invoices, suggestions, and subscribers into Firebase"
+          >
+            <Database className="w-3.5 h-3.5 text-amber-400" />
+            <span>Land All Data</span>
+          </button>
+
+          <button
             onClick={fetchData}
             disabled={loading}
             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer"
@@ -1159,20 +1254,6 @@ export default function AdminServicesPortal() {
               <span>Newsletter Subscribers ({subscribers.length})</span>
             </button>
           )}
-
-          {checkUserPermission(currentUserInfo, "manageUsers") && (
-            <button
-              onClick={() => { setActiveTab("rbac"); setSelectedItem(null); }}
-              className={`py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                activeTab === "rbac"
-                  ? "bg-amber-500 text-slate-950 shadow-lg"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Admin Users & PINs</span>
-            </button>
-          )}
         </div>
 
         {/* ---------------------------------------------------- */}
@@ -1230,84 +1311,122 @@ export default function AdminServicesPortal() {
                 {/* Core Service Info Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
                   <div className="space-y-1">
-                    <label className="text-gray-400 uppercase font-bold">Service Title (English) *</label>
+                    <label className="text-gray-400 uppercase font-bold">Service Title *</label>
                     <input
                       type="text"
                       value={editingService.titleEn}
                       onChange={(e) => setEditingService({ ...editingService, titleEn: e.target.value })}
+                      placeholder="e.g. Land Revenue & Tax Filing"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-gray-400 uppercase font-bold">Service Title (Nepali)</label>
-                    <input
-                      type="text"
-                      value={editingService.titleNp}
-                      onChange={(e) => setEditingService({ ...editingService, titleNp: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
-                    />
+                    <label className="text-gray-400 uppercase font-bold">Service Classification / Category *</label>
+                    <select
+                      value={editingService.category || "Private"}
+                      onChange={(e) => setEditingService({ ...editingService, category: e.target.value as "Government" | "Private" })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-amber-400 font-bold focus:border-amber-500 outline-none cursor-pointer"
+                    >
+                      <option value="Government">🏛️ Government Service (Official / Portal)</option>
+                      <option value="Private">🏢 Private Service (Enterprise / Custom)</option>
+                    </select>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-gray-400 uppercase font-bold">Price Format (English) *</label>
+                    <label className="text-gray-400 uppercase font-bold">Price / Fee Structure *</label>
                     <input
                       type="text"
                       value={editingService.priceEn}
                       onChange={(e) => setEditingService({ ...editingService, priceEn: e.target.value })}
-                      placeholder="e.g. NPR 15,000"
+                      placeholder="e.g. NPR 15,000 or Prescribed Gov Fee"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-gray-400 uppercase font-bold">Price Format (Nepali)</label>
+                    <label className="text-gray-400 uppercase font-bold">Official / Government Portal Reference Link</label>
                     <input
                       type="text"
-                      value={editingService.priceNp}
-                      onChange={(e) => setEditingService({ ...editingService, priceNp: e.target.value })}
-                      placeholder="e.g. रु १५,०००"
+                      value={editingService.officialLink || ""}
+                      onChange={(e) => setEditingService({ ...editingService, officialLink: e.target.value })}
+                      placeholder="e.g. https://nepal.gov.np or portal url"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
                     />
                   </div>
 
                   <div className="space-y-1 md:col-span-2">
-                    <label className="text-gray-400 uppercase font-bold">Description (English) *</label>
+                    <label className="text-gray-400 uppercase font-bold">Service Description *</label>
                     <textarea
-                      rows={2}
+                      rows={3}
                       value={editingService.descriptionEn}
                       onChange={(e) => setEditingService({ ...editingService, descriptionEn: e.target.value })}
+                      placeholder="Detailed explanation of services provided, timelines, and deliverables..."
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
                     />
                   </div>
 
+                  {/* Image and Gallery Section */}
                   <div className="space-y-1 md:col-span-2">
-                    <label className="text-gray-400 uppercase font-bold">Description (Nepali)</label>
+                    <label className="text-amber-400 uppercase font-bold flex items-center justify-between">
+                      <span>Cover Image / Visual Media (URL)</span>
+                      {editingService.imageUrl && (
+                        <span className="text-[10px] text-emerald-400 font-normal">✓ Cover image attached</span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      value={editingService.imageUrl || ""}
+                      onChange={(e) => setEditingService({ ...editingService, imageUrl: e.target.value })}
+                      placeholder="https://images.unsplash.com/... or direct image URL"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                    />
+                    {editingService.imageUrl && (
+                      <div className="mt-2 relative w-full h-32 rounded-xl overflow-hidden border border-slate-800 bg-black/40">
+                        <img 
+                          src={editingService.imageUrl} 
+                          alt="Service Cover Preview" 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-gray-400 uppercase font-bold">
+                      Additional Gallery Images (Comma-separated URLs)
+                    </label>
                     <textarea
                       rows={2}
-                      value={editingService.descriptionNp}
-                      onChange={(e) => setEditingService({ ...editingService, descriptionNp: e.target.value })}
+                      value={(editingService.images || []).join(", ")}
+                      onChange={(e) => {
+                        const urls = e.target.value.split(",").map(u => u.trim()).filter(Boolean);
+                        setEditingService({ ...editingService, images: urls });
+                      }}
+                      placeholder="https://images.unsplash.com/photo-1..., https://images.unsplash.com/photo-2..."
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-gray-400 uppercase font-bold">WhatsApp Inquire Message (English)</label>
+                    <label className="text-gray-400 uppercase font-bold">WhatsApp Direct Inquire Text</label>
                     <input
                       type="text"
                       value={editingService.whatsappMessageEn || ""}
                       onChange={(e) => setEditingService({ ...editingService, whatsappMessageEn: e.target.value })}
+                      placeholder="Pre-filled message when client clicks WhatsApp"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-gray-400 uppercase font-bold">Icon Identifier</label>
+                    <label className="text-gray-400 uppercase font-bold">Lucide Icon Identifier</label>
                     <input
                       type="text"
                       value={editingService.icon || "FileText"}
                       onChange={(e) => setEditingService({ ...editingService, icon: e.target.value })}
-                      placeholder="e.g. Layout, ShieldAlert, FileText, Landmark"
+                      placeholder="e.g. Landmark, ShieldCheck, FileText, Layout, Scale"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
                     />
                   </div>
@@ -1403,7 +1522,6 @@ export default function AdminServicesPortal() {
                                   {q.fieldType}
                                 </span>
                               </div>
-                              {q.labelNp && <p className="text-xs text-gray-400 font-sans mt-0.5">{q.labelNp}</p>}
                               {q.helpText && <p className="text-[11px] text-gray-500 font-mono mt-0.5">{q.helpText}</p>}
                             </div>
                           </div>
@@ -1487,29 +1605,92 @@ export default function AdminServicesPortal() {
                     key={srv.id}
                     className="bg-slate-900 border border-white/10 rounded-2xl p-5 space-y-4 hover:border-amber-500/40 transition-all flex flex-col justify-between"
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-3">
+                      {srv.imageUrl && (
+                        <div className="w-full h-36 rounded-xl overflow-hidden border border-slate-800 bg-black/40 relative">
+                          <img 
+                            src={srv.imageUrl} 
+                            alt={srv.titleEn} 
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase backdrop-blur-md ${
+                            srv.category === "Government"
+                              ? "bg-blue-950/80 text-blue-300 border border-blue-500/40"
+                              : "bg-emerald-950/80 text-emerald-300 border border-emerald-500/40"
+                          }`}>
+                            {srv.category === "Government" ? "🏛️ Government" : "🏢 Private"}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between">
+                        {!srv.imageUrl && (
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase ${
+                            srv.category === "Government"
+                              ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                              : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                          }`}>
+                            {srv.category === "Government" ? "🏛️ Government" : "🏢 Private"}
+                          </span>
+                        )}
                         <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 font-mono text-xs font-bold border border-amber-500/20">
                           {srv.priceEn}
                         </span>
                         <span className="text-[11px] font-mono text-gray-400">
-                          {(srv.questions || []).length} dynamic questions
+                          {(srv.questions || []).length} questions
                         </span>
                       </div>
 
                       <h3 className="text-base font-bold text-white font-serif">{srv.titleEn}</h3>
-                      {srv.titleNp && <p className="text-xs text-gray-400 font-sans">{srv.titleNp}</p>}
                       <p className="text-xs text-gray-400 line-clamp-3 font-sans leading-relaxed">
                         {srv.descriptionEn}
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-white/5 flex items-center justify-between">
-                      <span className="text-[10px] font-mono text-gray-500">ID: {srv.id}</span>
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const url = `${window.location.origin}/?service=${srv.id}`;
+                          if (navigator.share) {
+                            try {
+                              await navigator.share({
+                                title: srv.titleEn,
+                                text: `Check out ${srv.titleEn} on Amit Joshi Services`,
+                                url
+                              });
+                            } catch {
+                              navigator.clipboard.writeText(url);
+                              setSharedServiceId(srv.id);
+                              setTimeout(() => setSharedServiceId(null), 2500);
+                            }
+                          } else {
+                            navigator.clipboard.writeText(url);
+                            setSharedServiceId(srv.id);
+                            setTimeout(() => setSharedServiceId(null), 2500);
+                          }
+                        }}
+                        className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                        title="Share Service Link"
+                      >
+                        {sharedServiceId === srv.id ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-emerald-400" />
+                            <span className="text-emerald-400">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Share2 className="h-3.5 w-3.5 text-amber-400" />
+                            <span>Share</span>
+                          </>
+                        )}
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => setEditingService({ ...srv })}
-                        className="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                        className="px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all"
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                         <span>Manage Questions</span>
@@ -1539,21 +1720,11 @@ export default function AdminServicesPortal() {
 
                   <div className="space-y-4 text-xs font-mono">
                     <div className="space-y-1">
-                      <label className="text-gray-400 uppercase font-bold">Question Label / Title (English) *</label>
+                      <label className="text-gray-400 uppercase font-bold">Question Label / Title *</label>
                       <input
                         type="text"
                         value={editingQuestion.labelEn}
                         onChange={(e) => setEditingQuestion({ ...editingQuestion, labelEn: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-gray-400 uppercase font-bold">Question Label (Nepali)</label>
-                      <input
-                        type="text"
-                        value={editingQuestion.labelNp || ""}
-                        onChange={(e) => setEditingQuestion({ ...editingQuestion, labelNp: e.target.value })}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
                       />
                     </div>
@@ -2488,391 +2659,6 @@ export default function AdminServicesPortal() {
                 </table>
               </div>
             )}
-          </div>
-          )
-        )}
-
-        {/* ---------------------------------------------------- */}
-        {/* TAB 6: RBAC & ADMIN USERS */}
-        {/* ---------------------------------------------------- */}
-        {activeTab === "rbac" && (
-          !checkUserPermission(currentUserInfo, "manageUsers") ? (
-            <div className="bg-slate-900/80 border border-rose-500/30 rounded-3xl p-12 text-center space-y-3">
-              <ShieldAlert className="w-12 h-12 text-rose-400 mx-auto" />
-              <h3 className="text-lg font-bold text-white font-mono">Not Allowed</h3>
-              <p className="text-xs text-slate-400 font-mono">You do not have permission to manage Admin Accounts & Access Controls.</p>
-            </div>
-          ) : (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-              <div>
-                <h2 className="text-xl font-bold font-serif text-white flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-amber-400" />
-                  <span>Services Admin Accounts & Access Control</span>
-                </h2>
-                <p className="text-xs text-slate-400 font-mono mt-1">
-                  Manage authorized administrator logins, 4-digit security PIN codes, and access permissions.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setUserForm({
-                    id: "",
-                    username: "",
-                    pin: "",
-                    name: "",
-                    role: "services_admin",
-                    status: "active",
-                    permissions: {
-                      serviceRequests: true,
-                      suggestions: true,
-                      newsletter: true,
-                      serviceConfiguration: true,
-                      billing: true
-                    }
-                  });
-                  setIsEditingUser(true);
-                }}
-                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 flex items-center gap-2 cursor-pointer transition-all"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>Add Admin User</span>
-              </button>
-            </div>
-
-            {/* User Form Modal */}
-            {isEditingUser && (
-              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <h4 className="text-base font-bold text-amber-400 uppercase font-mono flex items-center gap-2">
-                      <UserPlus className="w-4 h-4" />
-                      <span>{userForm.id ? "Edit Admin User" : "Create Admin User"}</span>
-                    </h4>
-                    <button
-                      onClick={() => setIsEditingUser(false)}
-                      className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleSaveUser} className="space-y-4 text-xs font-mono">
-                    <div className="space-y-1">
-                      <label className="text-gray-400 uppercase font-bold">Full Name *</label>
-                      <input
-                        type="text"
-                        required
-                        value={userForm.name}
-                        onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-                        placeholder="e.g. Services Manager"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-gray-400 uppercase font-bold">Username *</label>
-                      <input
-                        type="text"
-                        required
-                        value={userForm.username}
-                        onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
-                        placeholder="e.g. loginadmin"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-gray-400 uppercase font-bold">4-Digit Security PIN *</label>
-                      <input
-                        type="password"
-                        required
-                        maxLength={4}
-                        value={userForm.pin}
-                        onChange={(e) => setUserForm({ ...userForm, pin: e.target.value })}
-                        placeholder="••••"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-center font-mono text-lg tracking-widest focus:border-amber-500 outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-gray-400 uppercase font-bold">Role & Account Type</label>
-                      <select
-                        value={userForm.role}
-                        onChange={(e) => setUserForm({ ...userForm, role: e.target.value as any })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-amber-400 focus:border-amber-500 outline-none"
-                      >
-                        <option value="super_admin">Super Admin (Unrestricted Full Access)</option>
-                        <option value="services_admin">Services Admin (Granular Permissions Below)</option>
-                      </select>
-                    </div>
-
-                    {/* Fine-Grained Permissions Matrix */}
-                    <div className="space-y-3 pt-2 border-t border-white/10 max-h-60 overflow-y-auto pr-1">
-                      <div className="flex items-center justify-between">
-                        <label className="text-amber-400 uppercase font-bold text-[11px] block">
-                          Granular Permission Matrix
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const allPerms: any = {
-                              serviceRequests: true,
-                              suggestions: true,
-                              newsletter: true,
-                              serviceConfiguration: true,
-                              billing: true,
-                              viewServiceForms: true,
-                              createServiceForms: true,
-                              editServiceForms: true,
-                              deleteServiceForms: true,
-                              viewServiceSubmissions: true,
-                              editServiceSubmissions: true,
-                              deleteServiceSubmissions: true,
-                              changeStatusServices: true,
-                              addRemarksServices: true,
-                              downloadServiceSubmissions: true,
-                              viewBills: true,
-                              editBills: true,
-                              createBills: true,
-                              deleteBills: true,
-                              modifyServiceBill: true,
-                              viewSuggestions: true,
-                              deleteSuggestions: true,
-                              changeStatusSuggestions: true,
-                              addRemarksSuggestions: true,
-                              viewNewsletter: true,
-                              deleteNewsletter: true,
-                              exportNewsletter: true,
-                              manageUsers: true
-                            };
-                            setUserForm(prev => ({ ...prev, permissions: allPerms }));
-                          }}
-                          className="text-[10px] text-amber-400 hover:underline"
-                        >
-                          Select All
-                        </button>
-                      </div>
-                      
-                      {/* 1. Dynamic Service Forms */}
-                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
-                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">1. Dynamic Service Forms</span>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          {[
-                            { key: "viewServiceForms", label: "View Forms" },
-                            { key: "createServiceForms", label: "Create Forms" },
-                            { key: "editServiceForms", label: "Edit Forms" },
-                            { key: "deleteServiceForms", label: "Delete Forms" }
-                          ].map(p => (
-                            <label key={p.key} className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
-                              <input
-                                type="checkbox"
-                                checked={(userForm.permissions as any)?.[p.key] ?? true}
-                                onChange={(e) => setUserForm(prev => ({
-                                  ...prev,
-                                  permissions: { ...(prev.permissions || {}), [p.key]: e.target.checked }
-                                }))}
-                                className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
-                              />
-                              <span className="text-[11px]">{p.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* 2. Submissions Management */}
-                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
-                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">2. Submissions & Requests</span>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          {[
-                            { key: "viewServiceSubmissions", label: "View Requests" },
-                            { key: "editServiceSubmissions", label: "Edit Access" },
-                            { key: "changeStatusServices", label: "Change Status" },
-                            { key: "addRemarksServices", label: "Add Remarks" },
-                            { key: "modifyServiceBill", label: "Modify Bill" },
-                            { key: "downloadServiceSubmissions", label: "Export CSV" },
-                            { key: "deleteServiceSubmissions", label: "Delete Request" }
-                          ].map(p => (
-                            <label key={p.key} className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
-                              <input
-                                type="checkbox"
-                                checked={(userForm.permissions as any)?.[p.key] ?? true}
-                                onChange={(e) => setUserForm(prev => ({
-                                  ...prev,
-                                  permissions: { ...(prev.permissions || {}), [p.key]: e.target.checked }
-                                }))}
-                                className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
-                              />
-                              <span className="text-[11px]">{p.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* 3. Invoices & 12h Billing */}
-                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
-                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">3. Invoices & Billing</span>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          {[
-                            { key: "viewBills", label: "View Bills" },
-                            { key: "editBills", label: "Edit Bills" },
-                            { key: "createBills", label: "Create Bills" },
-                            { key: "deleteBills", label: "Delete Bills" }
-                          ].map(p => (
-                            <label key={p.key} className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
-                              <input
-                                type="checkbox"
-                                checked={(userForm.permissions as any)?.[p.key] ?? true}
-                                onChange={(e) => setUserForm(prev => ({
-                                  ...prev,
-                                  permissions: { ...(prev.permissions || {}), [p.key]: e.target.checked }
-                                }))}
-                                className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
-                              />
-                              <span className="text-[11px]">{p.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* 4. Feedback & Suggestions */}
-                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
-                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">4. Feedback & Suggestions</span>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          {[
-                            { key: "viewSuggestions", label: "View Suggestions" },
-                            { key: "changeStatusSuggestions", label: "Change Status" },
-                            { key: "addRemarksSuggestions", label: "Add Remarks" },
-                            { key: "deleteSuggestions", label: "Delete Suggestion" }
-                          ].map(p => (
-                            <label key={p.key} className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
-                              <input
-                                type="checkbox"
-                                checked={(userForm.permissions as any)?.[p.key] ?? true}
-                                onChange={(e) => setUserForm(prev => ({
-                                  ...prev,
-                                  permissions: { ...(prev.permissions || {}), [p.key]: e.target.checked }
-                                }))}
-                                className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
-                              />
-                              <span className="text-[11px]">{p.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* 5. Newsletter Subscribers */}
-                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
-                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">5. Newsletter Subscribers</span>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          {[
-                            { key: "viewNewsletter", label: "View Subscribers" },
-                            { key: "exportNewsletter", label: "Export Subscribers" },
-                            { key: "deleteNewsletter", label: "Delete Subscriber" }
-                          ].map(p => (
-                            <label key={p.key} className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
-                              <input
-                                type="checkbox"
-                                checked={(userForm.permissions as any)?.[p.key] ?? true}
-                                onChange={(e) => setUserForm(prev => ({
-                                  ...prev,
-                                  permissions: { ...(prev.permissions || {}), [p.key]: e.target.checked }
-                                }))}
-                                className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
-                              />
-                              <span className="text-[11px]">{p.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* 6. Admin User Management */}
-                      <div className="space-y-1.5 bg-slate-950/80 p-3 rounded-xl border border-white/5">
-                        <span className="text-[10px] uppercase font-bold text-amber-400/80 block">6. System Admin</span>
-                        <label className="flex items-center space-x-2 cursor-pointer text-gray-300 hover:text-white">
-                          <input
-                            type="checkbox"
-                            checked={(userForm.permissions as any)?.manageUsers ?? false}
-                            onChange={(e) => setUserForm(prev => ({
-                              ...prev,
-                              permissions: { ...(prev.permissions || {}), manageUsers: e.target.checked }
-                            }))}
-                            className="rounded bg-black border-slate-700 text-amber-500 focus:ring-0"
-                          />
-                          <span className="text-[11px]">Manage Admin Accounts & PINs</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingUser(false)}
-                        className="px-4 py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold uppercase tracking-wider"
-                      >
-                        Save Account
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* Admin Users List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(portfolioData.serviceAdminUsers || defaultPortfolioData.serviceAdminUsers || []).map((u) => (
-                <div
-                  key={u.id}
-                  className="bg-slate-900 border border-white/10 rounded-2xl p-5 space-y-4 hover:border-amber-500/30 transition-all flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                        {u.role || "Admin"}
-                      </span>
-                      <span className="text-[10px] font-mono text-emerald-400 font-bold">
-                        ● {u.status || "Active"}
-                      </span>
-                    </div>
-
-                    <h4 className="text-base font-bold text-white font-serif">{u.name}</h4>
-                    <p className="text-xs font-mono text-gray-400">Username: <strong className="text-white">{u.username}</strong></p>
-                    <p className="text-xs font-mono text-gray-400">PIN: <span className="tracking-widest font-mono text-amber-400 font-bold">••••</span></p>
-                  </div>
-
-                  <div className="pt-3 border-t border-white/5 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setUserForm({ ...u });
-                        setIsEditingUser(true);
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                      <span>Edit</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteUser(u.id)}
-                      className="p-1.5 text-red-400 hover:text-red-300 rounded-lg cursor-pointer"
-                      title="Delete User"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
           )
         )}
