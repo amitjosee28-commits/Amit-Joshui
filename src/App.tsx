@@ -1,6 +1,28 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 
+// Traditional Mangal Dhun (Malshree) Shehnai Melody Notes (Frequencies in Hz)
+// Iconic opening motif: Sa, Re, Ga, Pa, Dha, Sa' (Festive Malshree Dhun)
+const MANGAL_DHUN_NOTES = [
+  { freq: 440.0, dur: 0.45 }, // A4 (Sa)
+  { freq: 493.88, dur: 0.35 }, // B4 (Re)
+  { freq: 554.37, dur: 0.65 }, // C#5 (Ga)
+  { freq: 659.25, dur: 0.8 }, // E5 (Pa)
+  { freq: 739.99, dur: 0.5 }, // F#5 (Dha)
+  { freq: 880.0, dur: 1.1 }, // A5 (Taar Sa)
+  { freq: 739.99, dur: 0.4 }, // F#5
+  { freq: 659.25, dur: 0.6 }, // E5
+  { freq: 554.37, dur: 0.5 }, // C#5
+  { freq: 493.88, dur: 0.4 }, // B4
+  { freq: 440.0, dur: 1.2 }, // A4
+  // Second festive phrase
+  { freq: 554.37, dur: 0.4 },
+  { freq: 659.25, dur: 0.5 },
+  { freq: 880.0, dur: 0.9 },
+  { freq: 987.77, dur: 0.4 },
+  { freq: 1108.73, dur: 1.3 }
+];
+
 export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [parallax, setParallax] = useState({ x: 0, y: 0, targetX: 0, targetY: 0 });
@@ -8,6 +30,10 @@ export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const synthGainRef = useRef<GainNode | null>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const isYtPlayingRef = useRef(false);
 
   // Smooth 3D Parallax Lerp calculation
   useEffect(() => {
@@ -37,7 +63,11 @@ export default function App() {
     const rect = containerRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setParallax((prev) => ({ ...prev, targetX: Math.max(-0.5, Math.min(0.5, x)), targetY: Math.max(-0.5, Math.min(0.5, y)) }));
+    setParallax((prev) => ({
+      ...prev,
+      targetX: Math.max(-0.5, Math.min(0.5, x)),
+      targetY: Math.max(-0.5, Math.min(0.5, y))
+    }));
   };
 
   // Mobile Touch Parallax
@@ -47,14 +77,17 @@ export default function App() {
     const rect = containerRef.current.getBoundingClientRect();
     const x = (touch.clientX - rect.left) / rect.width - 0.5;
     const y = (touch.clientY - rect.top) / rect.height - 0.5;
-    setParallax((prev) => ({ ...prev, targetX: Math.max(-0.5, Math.min(0.5, x)), targetY: Math.max(-0.5, Math.min(0.5, y)) }));
+    setParallax((prev) => ({
+      ...prev,
+      targetX: Math.max(-0.5, Math.min(0.5, x)),
+      targetY: Math.max(-0.5, Math.min(0.5, y))
+    }));
   };
 
   // Mobile Gyroscope / Device Tilt Parallax
   useEffect(() => {
     const handleOrientation = (e: DeviceOrientationEvent) => {
       if (e.gamma !== null && e.beta !== null) {
-        // gamma is left-to-right [-90, 90], beta is front-to-back [-180, 180]
         const x = Math.min(Math.max(e.gamma / 25, -0.5), 0.5);
         const y = Math.min(Math.max((e.beta - 40) / 25, -0.5), 0.5);
         setParallax((prev) => ({ ...prev, targetX: x, targetY: y }));
@@ -65,9 +98,185 @@ export default function App() {
     return () => window.removeEventListener("deviceorientation", handleOrientation);
   }, []);
 
-  // Automatic Audio Playback Controller for Mangal Dhun (YouTube ID: oic6eXNWX5E)
+  // Instant Web Audio Shehnai Synthesis Engine (Plays at 0ms with zero network lag)
+  const startInstantShehnaiTune = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContextClass();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+
+      if (synthGainRef.current) return; // already playing
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.001, ctx.currentTime);
+      masterGain.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + 0.15);
+      masterGain.connect(ctx.destination);
+      synthGainRef.current = masterGain;
+
+      // Temple singing bell harmony on start
+      const bellOsc = ctx.createOscillator();
+      const bellGain = ctx.createGain();
+      bellOsc.type = "sine";
+      bellOsc.frequency.setValueAtTime(528, ctx.currentTime);
+      bellGain.gain.setValueAtTime(0.2, ctx.currentTime);
+      bellGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.5);
+      bellOsc.connect(bellGain);
+      bellGain.connect(masterGain);
+      bellOsc.start();
+      bellOsc.stop(ctx.currentTime + 2.5);
+
+      // Play traditional Shehnai reed melody notes
+      let currentTime = ctx.currentTime + 0.1;
+      const playMelodyLoop = () => {
+        if (!synthGainRef.current || isYtPlayingRef.current) return;
+
+        MANGAL_DHUN_NOTES.forEach((note) => {
+          // Shehnai dual-reed harmonic oscillator
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const vibrato = ctx.createOscillator();
+          const vibratoGain = ctx.createGain();
+          const noteGain = ctx.createGain();
+          const filter = ctx.createBiquadFilter();
+
+          // Authentic Shehnai reedy timbre
+          osc1.type = "sawtooth";
+          osc2.type = "triangle";
+          osc1.frequency.setValueAtTime(note.freq, currentTime);
+          osc2.frequency.setValueAtTime(note.freq * 1.003, currentTime); // subtle detune
+
+          // Natural Shehnai pitch bend & vibrato (5.5Hz)
+          vibrato.frequency.setValueAtTime(5.5, currentTime);
+          vibratoGain.gain.setValueAtTime(note.freq * 0.015, currentTime);
+          vibrato.connect(vibratoGain);
+          vibratoGain.connect(osc1.frequency);
+          vibratoGain.connect(osc2.frequency);
+
+          // Resonant acoustic chamber filter
+          filter.type = "bandpass";
+          filter.frequency.setValueAtTime(note.freq * 2.2, currentTime);
+          filter.Q.setValueAtTime(3.2, currentTime);
+
+          // Note envelope with gentle legato
+          noteGain.gain.setValueAtTime(0.001, currentTime);
+          noteGain.gain.exponentialRampToValueAtTime(0.35, currentTime + 0.05);
+          noteGain.gain.setValueAtTime(0.35, currentTime + note.dur * 0.85);
+          noteGain.gain.exponentialRampToValueAtTime(0.001, currentTime + note.dur);
+
+          osc1.connect(filter);
+          osc2.connect(filter);
+          filter.connect(noteGain);
+          noteGain.connect(masterGain);
+
+          osc1.start(currentTime);
+          osc2.start(currentTime);
+          vibrato.start(currentTime);
+
+          osc1.stop(currentTime + note.dur);
+          osc2.stop(currentTime + note.dur);
+          vibrato.stop(currentTime + note.dur);
+
+          currentTime += note.dur;
+        });
+      };
+
+      playMelodyLoop();
+    } catch (e) {
+      console.warn("Instant audio synth:", e);
+    }
+  };
+
+  // Fade out synth once YouTube stream takes over
+  const fadeOutSynth = () => {
+    if (synthGainRef.current && audioCtxRef.current) {
+      isYtPlayingRef.current = true;
+      try {
+        const ctx = audioCtxRef.current;
+        synthGainRef.current.gain.setValueAtTime(synthGainRef.current.gain.value, ctx.currentTime);
+        synthGainRef.current.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
+        setTimeout(() => {
+          synthGainRef.current = null;
+        }, 1300);
+      } catch (e) {}
+    }
+  };
+
+  // YouTube Player initialization & zero-latency playback handler
   useEffect(() => {
-    const playTune = () => {
+    // 1. Immediately fire Web Audio so music begins at 0ms!
+    startInstantShehnaiTune();
+
+    // 2. Initialize YouTube Player API for the official Mangal Dhun video (oic6eXNWX5E)
+    let checkYtInterval: NodeJS.Timeout;
+
+    const initYt = () => {
+      const YT = (window as any).YT;
+      if (YT && YT.Player) {
+        if (!ytPlayerRef.current) {
+          ytPlayerRef.current = new YT.Player("yt-mangal-player", {
+            height: "2",
+            width: "2",
+            videoId: "oic6eXNWX5E",
+            playerVars: {
+              autoplay: 1,
+              controls: 0,
+              loop: 1,
+              playlist: "oic6eXNWX5E",
+              playsinline: 1,
+              rel: 0,
+              enablejsapi: 1,
+              modestbranding: 1
+            },
+            events: {
+              onReady: (event: any) => {
+                event.target.playVideo();
+                event.target.unMute();
+                event.target.setVolume(100);
+              },
+              onStateChange: (event: any) => {
+                // When YouTube is playing (state 1), fade out the instant prelude
+                if (event.data === 1) {
+                  fadeOutSynth();
+                }
+              }
+            }
+          });
+        }
+      } else {
+        // Fallback postMessage direct trigger
+        if (iframeRef.current) {
+          iframeRef.current.contentWindow?.postMessage(
+            JSON.stringify({ event: "command", func: "playVideo", args: [] }),
+            "*"
+          );
+        }
+      }
+    };
+
+    if ((window as any).YT && (window as any).YT.Player) {
+      initYt();
+    } else {
+      checkYtInterval = setInterval(() => {
+        if ((window as any).YT && (window as any).YT.Player) {
+          clearInterval(checkYtInterval);
+          initYt();
+        }
+      }, 100);
+    }
+
+    // 3. User interaction listener to bypass any strict mobile browser autoplay restrictions
+    const handleGesture = () => {
+      startInstantShehnaiTune();
+      if (ytPlayerRef.current && ytPlayerRef.current.playVideo) {
+        ytPlayerRef.current.playVideo();
+        ytPlayerRef.current.unMute();
+      }
       if (iframeRef.current) {
         iframeRef.current.contentWindow?.postMessage(
           JSON.stringify({ event: "command", func: "playVideo", args: [] }),
@@ -76,30 +285,19 @@ export default function App() {
       }
     };
 
-    // Immediate attempt on mount
-    playTune();
-    const t1 = setTimeout(playTune, 500);
-    const t2 = setTimeout(playTune, 1200);
-
-    // Ensure audio plays automatically on any user visit/touch/interaction (bypassing strict mobile browser autoplay restrictions)
-    const handleFirstInteraction = () => {
-      playTune();
-    };
-
-    window.addEventListener("click", handleFirstInteraction, { passive: true });
-    window.addEventListener("touchstart", handleFirstInteraction, { passive: true });
-    window.addEventListener("pointerdown", handleFirstInteraction, { passive: true });
-    window.addEventListener("keydown", handleFirstInteraction, { passive: true });
-    window.addEventListener("scroll", handleFirstInteraction, { passive: true });
+    window.addEventListener("click", handleGesture, { passive: true });
+    window.addEventListener("touchstart", handleGesture, { passive: true });
+    window.addEventListener("pointerdown", handleGesture, { passive: true });
+    window.addEventListener("keydown", handleGesture, { passive: true });
+    window.addEventListener("scroll", handleGesture, { passive: true });
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      window.removeEventListener("click", handleFirstInteraction);
-      window.removeEventListener("touchstart", handleFirstInteraction);
-      window.removeEventListener("pointerdown", handleFirstInteraction);
-      window.removeEventListener("keydown", handleFirstInteraction);
-      window.removeEventListener("scroll", handleFirstInteraction);
+      clearInterval(checkYtInterval);
+      window.removeEventListener("click", handleGesture);
+      window.removeEventListener("touchstart", handleGesture);
+      window.removeEventListener("pointerdown", handleGesture);
+      window.removeEventListener("keydown", handleGesture);
+      window.removeEventListener("scroll", handleGesture);
     };
   }, []);
 
@@ -158,7 +356,7 @@ export default function App() {
       "#34d399"  // Emerald
     ];
 
-    // Seed continuous floating golden diya embers from right side
+    // Embers rising from diyas
     const emberCount = window.innerWidth < 768 ? 20 : 38;
     for (let i = 0; i < emberCount; i++) {
       particles.push({
@@ -174,7 +372,7 @@ export default function App() {
       });
     }
 
-    // Seed gentle drifting marigold petals
+    // Marigold petals
     const petalCount = window.innerWidth < 768 ? 12 : 20;
     for (let i = 0; i < petalCount; i++) {
       particles.push({
@@ -192,7 +390,7 @@ export default function App() {
       });
     }
 
-    // Seed cyber digital network particles
+    // Cyber particles
     for (let i = 0; i < 14; i++) {
       particles.push({
         x: width * 0.3 + Math.random() * (width * 0.4),
@@ -236,13 +434,11 @@ export default function App() {
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Trigger realistic fireworks bursts
       if (Date.now() - lastFireworkTime > 1700) {
         spawnFirework();
         lastFireworkTime = Date.now();
       }
 
-      // Update and draw particles
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.x += p.vx;
@@ -250,7 +446,7 @@ export default function App() {
         p.alpha -= p.decay;
 
         if (p.type === "firework") {
-          p.vy += 0.026; // gravity
+          p.vy += 0.026;
           p.vx *= 0.985;
           p.vy *= 0.985;
         } else if (p.type === "petal") {
@@ -260,7 +456,6 @@ export default function App() {
           }
         }
 
-        // Recycle continuous particles
         if (p.alpha <= 0 || p.y < -15 || p.y > height + 20 || p.x < -15 || p.x > width + 15) {
           if (p.type === "ember") {
             p.x = width * 0.52 + Math.random() * (width * 0.46);
@@ -319,16 +514,24 @@ export default function App() {
       onMouseMove={handleMouseMove}
       onTouchMove={handleTouchMove}
     >
-      {/* Hidden YouTube Autoplay Audio Player (Mangal Dhun: oic6eXNWX5E) */}
+      {/* 
+        High-priority active YouTube Iframe for Mangal Dhun
+        Rendered with small dimensions offscreen (not display: none) so browser thread keeps decoding active without delay
+      */}
+      <div 
+        id="yt-mangal-player" 
+        className="absolute -top-[9999px] -left-[9999px] w-[20px] h-[20px] opacity-[0.01] pointer-events-none" 
+      />
+      
       <iframe
         ref={iframeRef}
-        src="https://www.youtube.com/embed/oic6eXNWX5E?enablejsapi=1&autoplay=1&loop=1&playlist=oic6eXNWX5E&controls=0&modestbranding=1&playsinline=1&rel=0"
-        title="Mangal Dhun Autoplay"
-        className="hidden"
-        allow="autoplay"
+        src="https://www.youtube-nocookie.com/embed/oic6eXNWX5E?enablejsapi=1&autoplay=1&mute=0&loop=1&playlist=oic6eXNWX5E&controls=0&playsinline=1&modestbranding=1&rel=0"
+        title="Mangal Dhun Live"
+        className="absolute -top-[9999px] -left-[9999px] w-[20px] h-[20px] opacity-[0.01] pointer-events-none"
+        allow="autoplay; encrypted-media; gyroscope; picture-in-picture"
       />
 
-      {/* ================= 1. DYNAMIC AMBIENT BACKDROP (Responsive across mobile/tablet/desktop) ================= */}
+      {/* ================= 1. DYNAMIC AMBIENT BACKDROP ================= */}
       <div 
         className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-45 pointer-events-none transition-transform duration-700 ease-out"
         style={{ 
@@ -346,7 +549,7 @@ export default function App() {
         }}
       />
 
-      {/* ================= 2. 3D PARALLAX MOTION POSTER (Mobile & Desktop Responsive) ================= */}
+      {/* ================= 2. 3D PARALLAX MOTION POSTER (Full Device Responsive) ================= */}
       <div 
         ref={containerRef}
         className="relative z-10 w-full max-w-full h-auto max-h-[100dvh] aspect-[16/9] flex items-center justify-center overflow-hidden shadow-[0_0_90px_rgba(0,0,0,0.98)]"
@@ -490,7 +693,7 @@ export default function App() {
           className="absolute inset-0 w-full h-full pointer-events-none z-20"
         />
 
-        {/* Discreet Fullscreen button in corner */}
+        {/* Discreet Fullscreen button in top corner */}
         <div className="absolute top-3 right-3 z-30 pointer-events-auto">
           <button
             onClick={toggleFullscreen}
